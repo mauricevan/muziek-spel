@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socketService from '../services/socket';
 import { Howl } from 'howler';
+import { searchTrack } from '../services/deezer';
 import '../styles/tailwind.css';
 
 const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameState }) => {
@@ -93,15 +94,14 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
 
     const loadRandomTrack = async () => {
         try {
-            // Fetch random track van Spotify/Deezer API
-            // Voor demo: gebruik een hardcoded track
-            const response = await fetch(
-                `http://localhost:3001/api/deezer/search?q=${encodeURIComponent(settings.category)}`
-            );
-            const data = await response.json();
+            console.log('Loading track for category:', settings.category);
 
-            if (data.data && data.data.length > 0) {
-                const track = data.data[0];
+            // Gebruik de deezer service om een track te zoeken
+            const track = await searchTrack(settings.category, '');
+
+            if (track && track.preview) {
+                console.log('Track loaded:', track.title, 'by', track.artist?.name);
+
                 setCurrentTrack({
                     title: track.title,
                     artist: track.artist?.name || 'Unknown',
@@ -111,6 +111,9 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
 
                 // Start audio
                 playAudio(track.preview);
+            } else {
+                console.error('No track found or no preview available');
+                showNotification('❌ Geen track met preview gevonden');
             }
         } catch (error) {
             console.error('Error loading track:', error);
