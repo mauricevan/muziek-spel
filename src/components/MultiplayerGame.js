@@ -30,9 +30,12 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
         socketService.on('correctGuess', handleCorrectGuess);
         socketService.on('chatMessage', handleChatMessage);
         socketService.on('gameEnded', handleGameEnded);
+        socketService.on('trackSynced', handleTrackSynced);
 
-        // Load eerste track
-        loadRandomTrack();
+        // Load eerste track (alleen admin)
+        if (isAdmin) {
+            loadRandomTrack();
+        }
 
         return () => {
             socketService.removeAllListeners('roomUpdate');
@@ -40,6 +43,7 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
             socketService.removeAllListeners('correctGuess');
             socketService.removeAllListeners('chatMessage');
             socketService.removeAllListeners('gameEnded');
+            socketService.removeAllListeners('trackSynced');
 
             if (audioRef.current) {
                 audioRef.current.stop();
@@ -48,7 +52,7 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
                 clearInterval(timerRef.current);
             }
         };
-    }, []);
+    }, [isAdmin]);
 
     useEffect(() => {
         // Auto-scroll chat
@@ -63,8 +67,28 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
         setRound(data.round);
         setHasGuessed(false);
         setSelectedAnswer(null);
-        loadRandomTrack();
+
+        // Alleen admin laadt nieuwe track
+        if (isAdmin) {
+            loadRandomTrack();
+        }
+
         showNotification(`🎵 Ronde ${data.round}!`);
+    };
+
+    const handleTrackSynced = (data) => {
+        // Niet-admin spelers ontvangen track van admin
+        const { trackInfo } = data;
+        console.log('Received synced track:', trackInfo.title, 'by', trackInfo.artist);
+
+        setCurrentTrack(trackInfo);
+
+        // Genereer multiple choice opties lokaal (voor nu random, kan later ook gesynced worden)
+        // Voor nu laden we gewoon 5 extra tracks en mengen met de correcte
+        loadMultipleChoiceForTrack(trackInfo);
+
+        // Start audio
+        playAudio(trackInfo.preview);
     };
 
     const handleCorrectGuess = (data) => {
@@ -111,12 +135,14 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
                 console.log('Correct track:', correctTrack.title, 'by', correctTrack.artist?.name);
                 console.log(`Loaded ${tracks.length} tracks for multiple choice`);
 
-                setCurrentTrack({
+                const trackInfo = {
                     title: correctTrack.title,
                     artist: correctTrack.artist?.name || 'Unknown',
                     preview: correctTrack.preview,
                     cover: correctTrack.album?.cover_medium
-                });
+                };
+
+                setCurrentTrack(trackInfo);
 
                 // Shuffle de opties voor multiple choice
                 const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
@@ -125,6 +151,11 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
                     artist: track.artist?.name || 'Unknown',
                     isCorrect: track.title === correctTrack.title && track.artist?.name === correctTrack.artist?.name
                 })));
+
+                // Als admin, sync track naar andere spelers
+                if (isAdmin) {
+                    socketService.syncTrack(trackInfo);
+                }
 
                 // Start audio
                 playAudio(correctTrack.preview);
@@ -140,6 +171,41 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
         } catch (error) {
             console.error('Error loading tracks:', error);
             showNotification('❌ Error bij laden van tracks');
+        }
+    };
+
+    const loadMultipleChoiceForTrack = async (correctTrack) => {
+        try {
+            // Haal 5 extra tracks op voor multiple choice
+            const tracks = await getMultipleTracks(settings.category, 5);
+
+            if (tracks && tracks.length > 0) {
+                // Combineer correcte track met extra tracks
+                const allTracks = [correctTrack, ...tracks];
+
+                // Shuffle de opties voor multiple choice
+                const shuffledTracks = [...allTracks].sort(() => Math.random() - 0.5);
+                setMultipleChoiceOptions(shuffledTracks.map(track => ({
+                    title: track.title,
+                    artist: track.artist || 'Unknown',
+                    isCorrect: track.title === correctTrack.title && track.artist === correctTrack.artist
+                })));
+            } else {
+                // Fallback: alleen de correcte track tonen
+                setMultipleChoiceOptions([{
+                    title: correctTrack.title,
+                    artist: correctTrack.artist,
+                    isCorrect: true
+                }]);
+            }
+        } catch (error) {
+            console.error('Error loading multiple choice options:', error);
+            // Fallback: alleen de correcte track tonen
+            setMultipleChoiceOptions([{
+                title: correctTrack.title,
+                artist: correctTrack.artist,
+                isCorrect: true
+            }]);
         }
     };
 
@@ -189,9 +255,9 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
         setSelectedAnswer(option);
         setHasGuessed(true);
 
-        // Stuur artiest en titel als guess
-        const guessText = `${option.artist} ${option.title}`;
-        socketService.submitGuess(guessText, currentTrack);
+        // Stuur artiest en titel als guess + of het correct is
+        const guessText = `${option.artist} - ${option.title}`;
+        socketService.submitGuess(guessText, option.isCorrect);
         showNotification('Antwoord ingediend! ⏳');
     };
 
@@ -300,8 +366,16 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
                         <div>
                             <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
                                 🎵 Ronde {round}
+                                {(settings.gameMode === 'maxRounds' || settings.gameMode === 'both') && (
+                                    <span className="text-lg text-gray-500"> / {settings.maxRounds}</span>
+                                )}
                             </h1>
-                            <p className="text-gray-600">Categorie: {settings.category}</p>
+                            <p className="text-gray-600">
+                                Categorie: {settings.category}
+                                {settings.gameMode === 'firstToScore' && ` • Eerste naar ${settings.winScore} punten`}
+                                {settings.gameMode === 'maxRounds' && ` • Hoogste score na ${settings.maxRounds} rondes`}
+                                {settings.gameMode === 'both' && ` • ${settings.winScore} punten of ${settings.maxRounds} rondes`}
+                            </p>
                         </div>
                         <div className="text-center">
                             <div className="text-4xl font-bold text-purple-600">{timeLeft}s</div>
@@ -461,7 +535,9 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
 
                             <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
                                 <p className="text-sm text-center font-semibold">
-                                    🎯 Eerste bij {settings.winScore} punten wint!
+                                    {settings.gameMode === 'firstToScore' && `🎯 Eerste bij ${settings.winScore} punten wint!`}
+                                    {settings.gameMode === 'maxRounds' && `🎯 Hoogste score na ${settings.maxRounds} rondes wint!`}
+                                    {settings.gameMode === 'both' && `🎯 Eerste bij ${settings.winScore} punten of hoogste score na ${settings.maxRounds} rondes wint!`}
                                 </p>
                             </div>
                         </div>

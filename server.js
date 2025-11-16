@@ -295,9 +295,12 @@ io.on('connection', (socket) => {
                     maxPlayers: 10,
                     guessesPerClip: 3,
                     winScore: 10,
-                    clipDuration: 20
+                    clipDuration: 20,
+                    maxRounds: 10,
+                    gameMode: 'firstToScore' // 'firstToScore', 'maxRounds', 'both'
                 },
                 currentRound: null,
+                currentTrack: null, // Server houdt track bij voor sync
                 scores: new Map()
             };
             gameRooms.set('main-room', room);
@@ -379,9 +382,26 @@ io.on('connection', (socket) => {
     });
 
     /**
+     * Admin/Client sync track voor huidige ronde
+     */
+    socket.on('syncTrack', ({ trackInfo }) => {
+        const room = gameRooms.get('main-room');
+        if (!room) return;
+
+        // Alleen admin of eerste speler kan track syncen
+        if (room.admin !== socket.id) return;
+
+        room.currentTrack = trackInfo;
+
+        // Broadcast track naar alle spelers behalve sender
+        socket.to('main-room').emit('trackSynced', { trackInfo });
+        console.log(`📻 Track synced: ${trackInfo.title} by ${trackInfo.artist}`);
+    });
+
+    /**
      * Player submit guess
      */
-    socket.on('submitGuess', ({ guess, trackInfo }) => {
+    socket.on('submitGuess', ({ guess, isCorrect }) => {
         const room = gameRooms.get('main-room');
         if (!room || !room.currentRound) return;
 
@@ -394,7 +414,6 @@ io.on('connection', (socket) => {
         }
 
         const timeTaken = Date.now() - room.currentRound.startTime;
-        const isCorrect = checkGuess(guess, trackInfo);
 
         room.currentRound.guesses.set(socket.id, {
             guess,
@@ -416,8 +435,9 @@ io.on('connection', (socket) => {
                 totalScore: player.gameScore
             });
 
-            // Check win conditie
-            if (player.gameScore >= room.settings.winScore) {
+            // Check win conditie gebaseerd op game mode
+            const shouldEnd = checkWinCondition(room, player);
+            if (shouldEnd) {
                 endGame(room, player.username);
                 return;
             }
@@ -435,11 +455,24 @@ io.on('connection', (socket) => {
 
         if (room.gameState !== 'playing') return;
 
+        const nextRoundNumber = room.currentRound.roundNumber + 1;
+
+        // Check of max rondes bereikt is
+        if ((room.settings.gameMode === 'maxRounds' || room.settings.gameMode === 'both') &&
+            nextRoundNumber > room.settings.maxRounds) {
+            // Bepaal winnaar op basis van hoogste score
+            const winner = findHighestScorer(room);
+            endGame(room, winner);
+            return;
+        }
+
         room.currentRound = {
-            roundNumber: room.currentRound.roundNumber + 1,
+            roundNumber: nextRoundNumber,
             startTime: Date.now(),
             guesses: new Map()
         };
+
+        room.currentTrack = null; // Reset track voor nieuwe ronde
 
         io.to('main-room').emit('newRound', {
             round: room.currentRound.roundNumber
@@ -546,18 +579,35 @@ function broadcastRoomUpdate(room) {
     });
 }
 
-function checkGuess(guess, trackInfo) {
-    if (!guess || !trackInfo) return false;
+function checkWinCondition(room, player) {
+    const mode = room.settings.gameMode;
+    const hasReachedScore = player.gameScore >= room.settings.winScore;
+    const hasReachedMaxRounds = room.currentRound.roundNumber >= room.settings.maxRounds;
 
-    const normalizedGuess = guess.toLowerCase().trim();
-    const title = trackInfo.title?.toLowerCase() || '';
-    const artist = trackInfo.artist?.toLowerCase() || '';
+    if (mode === 'firstToScore') {
+        return hasReachedScore;
+    } else if (mode === 'maxRounds') {
+        return hasReachedMaxRounds;
+    } else if (mode === 'both') {
+        // Win als score bereikt OF max rondes bereikt
+        return hasReachedScore || hasReachedMaxRounds;
+    }
 
-    // Check of guess title of artist bevat
-    return title.includes(normalizedGuess) ||
-           artist.includes(normalizedGuess) ||
-           normalizedGuess.includes(title) ||
-           normalizedGuess.includes(artist);
+    return false;
+}
+
+function findHighestScorer(room) {
+    let highestScore = -1;
+    let winner = null;
+
+    room.players.forEach(player => {
+        if (player.gameScore > highestScore) {
+            highestScore = player.gameScore;
+            winner = player.username;
+        }
+    });
+
+    return winner;
 }
 
 function calculatePoints(timeTaken, position) {

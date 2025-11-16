@@ -30,7 +30,9 @@ const MultiplayerLobby = () => {
         maxPlayers: 10,
         guessesPerClip: 3,
         winScore: 10,
-        clipDuration: 20
+        clipDuration: 20,
+        maxRounds: 10,
+        gameMode: 'firstToScore' // 'firstToScore', 'maxRounds', 'both'
     });
     const [error, setError] = useState('');
     const [totalScore, setTotalScore] = useState(0);
@@ -377,18 +379,52 @@ const MultiplayerLobby = () => {
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Win Score: {settings.winScore}
+                                            Game Mode
                                         </label>
-                                        <input
-                                            type="range"
-                                            min="5"
-                                            max="50"
-                                            step="5"
-                                            value={settings.winScore}
-                                            onChange={(e) => handleSettingChange('winScore', parseInt(e.target.value))}
-                                            className="w-full"
-                                        />
+                                        <select
+                                            value={settings.gameMode}
+                                            onChange={(e) => handleSettingChange('gameMode', e.target.value)}
+                                            className="input-field"
+                                        >
+                                            <option value="firstToScore">Eerste naar {settings.winScore} punten</option>
+                                            <option value="maxRounds">Hoogste score na {settings.maxRounds} rondes</option>
+                                            <option value="both">Beide (eerste conditie)</option>
+                                        </select>
                                     </div>
+
+                                    {(settings.gameMode === 'firstToScore' || settings.gameMode === 'both') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Win Score: {settings.winScore} punten
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="5"
+                                                max="50"
+                                                step="5"
+                                                value={settings.winScore}
+                                                onChange={(e) => handleSettingChange('winScore', parseInt(e.target.value))}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {(settings.gameMode === 'maxRounds' || settings.gameMode === 'both') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Max Rondes: {settings.maxRounds}
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="3"
+                                                max="20"
+                                                step="1"
+                                                value={settings.maxRounds}
+                                                onChange={(e) => handleSettingChange('maxRounds', parseInt(e.target.value))}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -421,7 +457,17 @@ const MultiplayerLobby = () => {
                                 <div className="space-y-3 text-gray-600">
                                     <p><strong>Categorie:</strong> {settings.category}</p>
                                     <p><strong>Max Spelers:</strong> {settings.maxPlayers}</p>
-                                    <p><strong>Win Score:</strong> {settings.winScore}</p>
+                                    <p><strong>Game Mode:</strong> {
+                                        settings.gameMode === 'firstToScore' ? `Eerste naar ${settings.winScore} punten` :
+                                        settings.gameMode === 'maxRounds' ? `${settings.maxRounds} rondes` :
+                                        'Beide'
+                                    }</p>
+                                    {(settings.gameMode === 'firstToScore' || settings.gameMode === 'both') && (
+                                        <p><strong>Win Score:</strong> {settings.winScore} punten</p>
+                                    )}
+                                    {(settings.gameMode === 'maxRounds' || settings.gameMode === 'both') && (
+                                        <p><strong>Max Rondes:</strong> {settings.maxRounds}</p>
+                                    )}
                                     <p><strong>Clip Duur:</strong> {settings.clipDuration}s</p>
                                     <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
                                         ⏳ Wachten op admin om te starten...
@@ -435,9 +481,17 @@ const MultiplayerLobby = () => {
                             <h3 className="font-bold mb-3">📖 Hoe te spelen</h3>
                             <ul className="text-sm text-gray-600 space-y-2">
                                 <li>🎵 Luister naar het muziekfragment</li>
-                                <li>⌨️ Type de artiest of titel</li>
+                                <li>🎯 Kies het juiste antwoord uit de opties</li>
                                 <li>⚡ Sneller raden = meer punten!</li>
-                                <li>🏆 Eerste bij {settings.winScore} punten wint</li>
+                                {settings.gameMode === 'firstToScore' && (
+                                    <li>🏆 Eerste bij {settings.winScore} punten wint!</li>
+                                )}
+                                {settings.gameMode === 'maxRounds' && (
+                                    <li>🏆 Hoogste score na {settings.maxRounds} rondes wint!</li>
+                                )}
+                                {settings.gameMode === 'both' && (
+                                    <li>🏆 Eerste bij {settings.winScore} punten of hoogste score na {settings.maxRounds} rondes wint!</li>
+                                )}
                             </ul>
                         </div>
                     </div>
