@@ -1,7 +1,10 @@
 // Deezer API Service for getting track previews
 // Uses backend proxy to avoid CORS issues
+// Note: API route is /api/music instead of /api/deezer to prevent ad blocker issues
 
-const PROXY_BASE = 'http://localhost:3001/api/deezer';
+const PROXY_BASE = process.env.NODE_ENV === 'production'
+    ? '/api/music'
+    : 'http://localhost:3001/api/music';
 
 /**
  * Search for a track on Deezer via backend proxy

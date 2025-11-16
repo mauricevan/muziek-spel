@@ -7,6 +7,7 @@ import Box from "@material-ui/core/Box";
 const PlayAudio = ({ idx, mp3, playing, setPlaying, previewDuration = 30 }) => {
     const [id, setId] = useState("");
     const [progress, setProgress] = useState(0);
+    const [loadError, setLoadError] = useState(false);
     const progressInterval = useRef(null);
     const [sound] = useState(
         new Howl({
@@ -17,10 +18,16 @@ const PlayAudio = ({ idx, mp3, playing, setPlaying, previewDuration = 30 }) => {
             html5: true,
             onload: function() {
                 console.log('Audio loaded:', mp3);
+                setLoadError(false);
             },
             onloaderror: function(id, error) {
-                console.error('Failed to load audio:', error);
-                alert('Could not load audio preview. Trying next track...');
+                console.error('Failed to load audio:', error, 'URL:', mp3);
+                setLoadError(true);
+                setPlaying({});
+            },
+            onplayerror: function(id, error) {
+                console.error('Failed to play audio:', error, 'URL:', mp3);
+                setLoadError(true);
                 setPlaying({});
             },
             onend: function() {
@@ -80,6 +87,21 @@ const PlayAudio = ({ idx, mp3, playing, setPlaying, previewDuration = 30 }) => {
             clearInterval(progressInterval.current);
         }
     };
+
+    // Don't render button if mp3 is null or if there was a load error
+    if (!mp3 || loadError) {
+        return (
+            <Box style={{ width: "100%" }}>
+                <Button
+                    disabled
+                    variant="outlined"
+                    style={{ width: "100%", opacity: 0.5 }}
+                >
+                    No preview
+                </Button>
+            </Box>
+        );
+    }
 
     return (
         <Box style={{ width: "100%" }}>
