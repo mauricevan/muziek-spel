@@ -2,9 +2,9 @@
   "name": "whos-who",
   "version": "2.0.0",
   "description": "Skeleton for the Spotify Assessment of the FastTrack'D Class",
-  "main": "dist/index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "webpack-dev-server --open --mode development",
+    "start": "node server.js",
     "build": "webpack --mode production",
     "server": "node server.js",
     "dev": "npm run server & npm start"
