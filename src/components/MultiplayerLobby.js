@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import socketService from '../services/socket';
 import MultiplayerGame from './MultiplayerGame';
+import { FaArrowLeft, FaMusic } from 'react-icons/fa';
+import toast, { Toaster } from 'react-hot-toast';
 import '../styles/tailwind.css';
+
+const MUSIC_FACTS = [
+    "🎵 Muziek kan je humeur verbeteren en stress verminderen!",
+    "🎸 De gitaar is het meest gespeelde instrument ter wereld",
+    "🎹 Mozart schreef zijn eerste symfonie toen hij 8 jaar oud was",
+    "🎤 De langste opgenomen rocksong is 76 minuten lang",
+    "🎧 Mensen die muziek luisteren zijn gelukkiger",
+    "🎼 Beethoven was volledig doof toen hij zijn 9e symfonie schreef",
+    "🎺 Jazz werd geboren in New Orleans rond 1900",
+    "🥁 De drummer van The Beatles, Ringo Starr, is linkshandig",
+    "🎻 Een viool heeft meer dan 70 verschillende onderdelen",
+    "🎸 De duurste gitaar ooit verkocht kostte $2,7 miljoen"
+];
 
 const MultiplayerLobby = () => {
     const [username, setUsername] = useState('');
@@ -18,6 +34,7 @@ const MultiplayerLobby = () => {
     });
     const [error, setError] = useState('');
     const [totalScore, setTotalScore] = useState(0);
+    const [currentFact, setCurrentFact] = useState(0);
 
     useEffect(() => {
         // Check localStorage voor saved username
@@ -35,11 +52,17 @@ const MultiplayerLobby = () => {
         socketService.on('newAdmin', handleNewAdmin);
         socketService.on('error', handleError);
 
+        // Rotate music facts every 5 seconds
+        const factInterval = setInterval(() => {
+            setCurrentFact(prev => (prev + 1) % MUSIC_FACTS.length);
+        }, 5000);
+
         return () => {
             socketService.removeAllListeners('roomUpdate');
             socketService.removeAllListeners('gameStarted');
             socketService.removeAllListeners('newAdmin');
             socketService.removeAllListeners('error');
+            clearInterval(factInterval);
         };
     }, []);
 
@@ -56,7 +79,7 @@ const MultiplayerLobby = () => {
     const handleNewAdmin = (data) => {
         if (data.username === username) {
             setIsAdmin(true);
-            alert(`Je bent nu de admin! 👑`);
+            toast.success(`Je bent nu de admin! 👑`);
         }
     };
 
@@ -79,7 +102,7 @@ const MultiplayerLobby = () => {
             localStorage.setItem('musicGameUsername', username.trim());
 
             if (response.isAdmin) {
-                alert('🎉 Je bent de eerste speler en automatisch admin!');
+                toast.success('🎉 Je bent de eerste speler en automatisch admin!');
             }
         } catch (err) {
             setError(err.message);
@@ -116,6 +139,17 @@ const MultiplayerLobby = () => {
     if (!joined) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-4">
+                <Toaster position="top-center" />
+                {/* Back Button */}
+                <Link
+                    to="/"
+                    className="absolute top-4 left-4 inline-flex items-center gap-2 px-4 py-2 bg-white/90 text-gray-700 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 focus-visible-ring"
+                    aria-label="Terug naar home"
+                >
+                    <FaArrowLeft />
+                    <span className="font-semibold">Home</span>
+                </Link>
+
                 <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
                     <div className="text-center mb-8">
                         <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-2">
@@ -166,6 +200,18 @@ const MultiplayerLobby = () => {
     // Lobby scherm
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-4">
+            <Toaster position="top-center" />
+
+            {/* Back Button */}
+            <Link
+                to="/"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 text-gray-700 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 focus-visible-ring mb-6"
+                aria-label="Terug naar home"
+            >
+                <FaArrowLeft />
+                <span className="font-semibold">Terug naar Home</span>
+            </Link>
+
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="bg-white rounded-2xl shadow-2xl p-6 mb-6">
@@ -224,8 +270,17 @@ const MultiplayerLobby = () => {
                                 ))}
 
                                 {players.length === 0 && (
-                                    <div className="text-center py-8 text-gray-400">
-                                        Wachten op spelers...
+                                    <div className="text-center py-8">
+                                        <FaMusic className="text-4xl text-gray-400 mx-auto mb-4 animate-pulse" />
+                                        <p className="text-gray-400 mb-4">Wachten op spelers...</p>
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 transition-all duration-500 animate-fade-in">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                                💡 Wist je dat...
+                                            </p>
+                                            <p className="text-gray-600 dark:text-gray-400 mt-2">
+                                                {MUSIC_FACTS[currentFact]}
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>

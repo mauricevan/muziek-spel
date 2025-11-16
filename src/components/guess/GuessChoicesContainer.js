@@ -1,17 +1,10 @@
 import React from "react";
 import GuessChoice from "./GuessChoice";
-import Box from "@material-ui/core/Box";
 
 //used in guess and result
 const GuessChoicesContainer = ({artists, setGuess, correctGuess}) => {
     return (
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          flexDirection="column"
-          style={{gap: "1rem"}}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
           {artists.map((artist, index) => (
             artist && (
               <GuessChoice
@@ -22,7 +15,7 @@ const GuessChoicesContainer = ({artists, setGuess, correctGuess}) => {
               />
             )
           ))}
-        </Box>
+        </div>
     );
 };
 
