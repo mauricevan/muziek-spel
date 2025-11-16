@@ -126,10 +126,33 @@ export const getTrackPreviews = async (tracks) => {
     return previews;
 };
 
+/**
+ * Get multiple tracks for a category (voor multiple choice)
+ */
+export const getMultipleTracks = async (category, count = 6) => {
+    try {
+        const response = await fetch(
+            `${PROXY_BASE}/multiple?q=${encodeURIComponent(category)}&count=${count}`
+        );
+
+        const data = await response.json();
+
+        if (data.data && data.data.length > 0) {
+            return data.data;
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error getting multiple tracks:', error);
+        return [];
+    }
+};
+
 export default {
     searchTrack,
     searchArtist,
     getArtistTopTracks,
     getTrackPreview,
-    getTrackPreviews
+    getTrackPreviews,
+    getMultipleTracks
 };

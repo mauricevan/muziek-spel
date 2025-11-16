@@ -113,6 +113,52 @@ app.get('/api/music/artist/:id/top', async (req, res) => {
 });
 
 /**
+ * Proxy endpoint voor multiple tracks (voor multiple choice)
+ * GET /api/music/multiple?q=category&count=6
+ */
+app.get('/api/music/multiple', async (req, res) => {
+    try {
+        const query = req.query.q;
+        const count = parseInt(req.query.count) || 6;
+
+        if (!query) {
+            return res.status(400).json({ error: 'Query parameter "q" is required' });
+        }
+
+        // Zoek meerdere tracks voor dezelfde categorie
+        const response = await fetch(
+            `${DEEZER_API_BASE}/search?q=${encodeURIComponent(query)}&limit=${count * 3}`
+        );
+
+        const data = await response.json();
+
+        if (data.data && data.data.length > 0) {
+            // Filter alleen tracks met preview en unieke tracks
+            const uniqueTracks = [];
+            const seenTitles = new Set();
+
+            for (const track of data.data) {
+                if (track.preview && uniqueTracks.length < count) {
+                    const key = `${track.title}-${track.artist.name}`.toLowerCase();
+                    if (!seenTitles.has(key)) {
+                        seenTitles.add(key);
+                        uniqueTracks.push(track);
+                    }
+                }
+            }
+
+            res.json({ data: uniqueTracks });
+        } else {
+            res.json({ data: [] });
+        }
+
+    } catch (error) {
+        console.error('Error fetching multiple tracks from Deezer:', error);
+        res.status(500).json({ error: 'Failed to fetch multiple tracks from Deezer API' });
+    }
+});
+
+/**
  * Health check endpoint
  */
 app.get('/health', (req, res) => {
