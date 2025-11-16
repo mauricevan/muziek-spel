@@ -149,6 +149,28 @@ io.on('connection', (socket) => {
     console.log(`🔌 New connection: ${socket.id}`);
 
     /**
+     * Get room status (voor bezoekers die willen checken of er een game is)
+     */
+    socket.on('getRoomStatus', () => {
+        const room = gameRooms.get('main-room');
+
+        if (!room || room.players.size === 0) {
+            socket.emit('roomStatus', {
+                hasActiveRoom: false,
+                playerCount: 0,
+                gameState: null
+            });
+        } else {
+            socket.emit('roomStatus', {
+                hasActiveRoom: true,
+                playerCount: room.players.size,
+                gameState: room.gameState,
+                maxPlayers: room.settings.maxPlayers
+            });
+        }
+    });
+
+    /**
      * Player joins met username
      */
     socket.on('join', ({ username }) => {
@@ -386,6 +408,13 @@ io.on('connection', (socket) => {
             if (room.players.size === 0) {
                 gameRooms.delete('main-room');
                 console.log('🗑️  Room verwijderd (geen spelers)');
+
+                // Broadcast dat room niet meer actief is
+                io.emit('roomStatusChanged', {
+                    hasActiveRoom: false,
+                    playerCount: 0,
+                    gameState: null
+                });
             } else {
                 broadcastRoomUpdate(room);
             }
@@ -415,6 +444,14 @@ function broadcastRoomUpdate(room) {
             roundNumber: room.currentRound.roundNumber,
             guessCount: room.currentRound.guesses.size
         } : null
+    });
+
+    // Broadcast room status naar ALLE clients (ook niet-gejoinde)
+    io.emit('roomStatusChanged', {
+        hasActiveRoom: true,
+        playerCount: room.players.size,
+        gameState: room.gameState,
+        maxPlayers: room.settings.maxPlayers
     });
 }
 

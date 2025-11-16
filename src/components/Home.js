@@ -8,8 +8,9 @@ import toast, { Toaster } from 'react-hot-toast';
 import {
     FaMusic, FaGuitar, FaDrum, FaCompactDisc,
     FaBroadcastTower, FaMicrophone, FaHeadphones,
-    FaRecordVinyl, FaMoon, FaSun
+    FaRecordVinyl, FaMoon, FaSun, FaUsers
 } from 'react-icons/fa';
+import socketService from '../services/socket';
 
 const GENRE_ICONS = {
     "pop": FaMusic,
@@ -49,6 +50,11 @@ const Home = ({
     const [numArtists, setNumArtists] = useState(
         Number(localStorage.getItem("qtyArtists")) || 2
     );
+    const [roomStatus, setRoomStatus] = useState({
+        hasActiveRoom: false,
+        playerCount: 0,
+        gameState: null
+    });
 
     useEffect(() => {
         setArtists();
@@ -63,6 +69,31 @@ const Home = ({
             document.documentElement.classList.remove('dark');
         }
     }, [darkMode]);
+
+    // Monitor multiplayer room status
+    useEffect(() => {
+        const socket = socketService.getSocket();
+
+        // Request initial status
+        socket.emit('getRoomStatus');
+
+        // Listen for status updates
+        const handleRoomStatus = (status) => {
+            setRoomStatus(status);
+        };
+
+        const handleRoomStatusChanged = (status) => {
+            setRoomStatus(status);
+        };
+
+        socket.on('roomStatus', handleRoomStatus);
+        socket.on('roomStatusChanged', handleRoomStatusChanged);
+
+        return () => {
+            socket.off('roomStatus', handleRoomStatus);
+            socket.off('roomStatusChanged', handleRoomStatusChanged);
+        };
+    }, []);
 
     const toggleDarkMode = () => {
         const newMode = !darkMode;
@@ -403,18 +434,43 @@ const Home = ({
                 </div>
 
                 {/* Multiplayer Section */}
-                <div className="bg-gradient-to-r from-purple-500 to-blue-600 rounded-3xl shadow-2xl p-8 text-white animate-scale-in">
+                <div className="bg-gradient-to-r from-purple-500 to-blue-600 rounded-3xl shadow-2xl p-8 text-white animate-scale-in relative overflow-hidden">
+                    {/* Live Status Indicator */}
+                    {roomStatus.hasActiveRoom && (
+                        <div className="absolute top-4 right-4 flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full animate-pulse">
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+                            <div className="w-2 h-2 bg-green-400 rounded-full absolute"></div>
+                            <FaUsers className="text-white ml-2" />
+                            <span className="text-sm font-semibold">
+                                {roomStatus.playerCount} {roomStatus.playerCount === 1 ? 'speler' : 'spelers'} online
+                            </span>
+                        </div>
+                    )}
+
                     <div className="text-center">
                         <h3 className="text-3xl font-bold mb-3">🎮 Multiplayer Mode</h3>
                         <p className="text-lg mb-6 opacity-90">
                             Speel met vrienden! Real-time muziek raden met live scoreboard.
                         </p>
+
+                        {/* Status bericht */}
+                        {roomStatus.hasActiveRoom && (
+                            <div className="mb-4 bg-white/20 backdrop-blur-sm rounded-lg p-3 animate-bounce">
+                                <p className="text-sm font-semibold">
+                                    {roomStatus.gameState === 'playing' ? '🎮 Er is een game bezig!' : '👥 Spelers in de lobby!'}
+                                </p>
+                                <p className="text-xs opacity-90 mt-1">
+                                    Klik op de knop om mee te doen!
+                                </p>
+                            </div>
+                        )}
+
                         <Link to="/multiplayer">
                             <button
                                 className="bg-white text-purple-600 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus-visible-ring"
                                 aria-label="Go to multiplayer mode"
                             >
-                                Multiplayer Starten 🎵
+                                {roomStatus.hasActiveRoom ? 'Join Game 🎵' : 'Multiplayer Starten 🎵'}
                             </button>
                         </Link>
                     </div>
