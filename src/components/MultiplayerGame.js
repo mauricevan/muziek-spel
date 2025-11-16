@@ -100,12 +100,16 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
             // Haal 6 tracks op voor multiple choice
             const tracks = await getMultipleTracks(settings.category, 6);
 
-            if (tracks && tracks.length >= 6) {
+            // Minimum 3 tracks nodig voor meaningful multiple choice
+            const minTracks = 3;
+
+            if (tracks && tracks.length >= minTracks) {
                 // Kies random track als het correcte antwoord
                 const correctIndex = Math.floor(Math.random() * tracks.length);
                 const correctTrack = tracks[correctIndex];
 
                 console.log('Correct track:', correctTrack.title, 'by', correctTrack.artist?.name);
+                console.log(`Loaded ${tracks.length} tracks for multiple choice`);
 
                 setCurrentTrack({
                     title: correctTrack.title,
@@ -125,8 +129,13 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
                 // Start audio
                 playAudio(correctTrack.preview);
             } else {
-                console.error('Not enough tracks found for multiple choice');
-                showNotification('❌ Niet genoeg tracks gevonden voor multiple choice');
+                console.error(`Not enough tracks found for multiple choice (got ${tracks?.length || 0}, need at least ${minTracks})`);
+                showNotification(`❌ Niet genoeg tracks gevonden (${tracks?.length || 0}/${minTracks}). Probeer een andere categorie!`);
+
+                // Als admin, toon suggestie om categorie te wijzigen
+                if (isAdmin) {
+                    showNotification('💡 Tip: Probeer categorie "pop" of "rock"');
+                }
             }
         } catch (error) {
             console.error('Error loading tracks:', error);
