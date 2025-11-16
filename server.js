@@ -125,20 +125,23 @@ app.get('/api/music/multiple', async (req, res) => {
             return res.status(400).json({ error: 'Query parameter "q" is required' });
         }
 
-        // Zoek meerdere tracks voor dezelfde categorie
-        const response = await fetch(
-            `${DEEZER_API_BASE}/search?q=${encodeURIComponent(query)}&limit=${count * 3}`
-        );
+        // Helper functie om tracks te fetchen en filteren
+        const fetchAndFilterTracks = async (searchQuery, limit) => {
+            const response = await fetch(
+                `${DEEZER_API_BASE}/search?q=${encodeURIComponent(searchQuery)}&limit=${limit}`
+            );
+            const data = await response.json();
 
-        const data = await response.json();
+            if (!data.data || data.data.length === 0) {
+                return [];
+            }
 
-        if (data.data && data.data.length > 0) {
             // Filter alleen tracks met preview en unieke tracks
             const uniqueTracks = [];
             const seenTitles = new Set();
 
             for (const track of data.data) {
-                if (track.preview && uniqueTracks.length < count) {
+                if (track.preview) {
                     const key = `${track.title}-${track.artist.name}`.toLowerCase();
                     if (!seenTitles.has(key)) {
                         seenTitles.add(key);
@@ -147,10 +150,52 @@ app.get('/api/music/multiple', async (req, res) => {
                 }
             }
 
-            res.json({ data: uniqueTracks });
-        } else {
-            res.json({ data: [] });
+            return uniqueTracks;
+        };
+
+        // Probeer eerst met de specifieke query, request meer tracks
+        let uniqueTracks = await fetchAndFilterTracks(query, count * 5);
+
+        // Als we niet genoeg tracks hebben, probeer fallback queries
+        if (uniqueTracks.length < count) {
+            console.log(`Not enough tracks for "${query}" (got ${uniqueTracks.length}), trying fallback...`);
+
+            // Probeer verschillende fallback queries
+            const fallbackQueries = [
+                `${query} music`,
+                `top ${query}`,
+                `best ${query}`,
+                'pop music', // Ultimate fallback naar populaire muziek
+                'top tracks'
+            ];
+
+            for (const fallbackQuery of fallbackQueries) {
+                if (uniqueTracks.length >= count) break;
+
+                const fallbackTracks = await fetchAndFilterTracks(fallbackQuery, 50);
+
+                // Voeg nieuwe unieke tracks toe
+                const existingKeys = new Set(
+                    uniqueTracks.map(t => `${t.title}-${t.artist.name}`.toLowerCase())
+                );
+
+                for (const track of fallbackTracks) {
+                    if (uniqueTracks.length >= count) break;
+
+                    const key = `${track.title}-${track.artist.name}`.toLowerCase();
+                    if (!existingKeys.has(key)) {
+                        existingKeys.add(key);
+                        uniqueTracks.push(track);
+                    }
+                }
+            }
         }
+
+        // Limiteer tot het gevraagde aantal
+        const finalTracks = uniqueTracks.slice(0, count);
+
+        console.log(`Returning ${finalTracks.length} tracks for query "${query}"`);
+        res.json({ data: finalTracks });
 
     } catch (error) {
         console.error('Error fetching multiple tracks from Deezer:', error);
