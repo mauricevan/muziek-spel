@@ -266,6 +266,36 @@ const Home = ({
                     {loading ? "Laden..." : "Speel! 🎮"}
                 </Button>
             </Box>
+
+            {/* Multiplayer Mode */}
+            <Box display="flex" justifyContent="center" alignItems="center" marginTop="2rem">
+                <div style={{ textAlign: "center", width: "100%" }}>
+                    <div style={{
+                        padding: "1rem",
+                        backgroundColor: "#f3f4f6",
+                        borderRadius: "8px",
+                        marginBottom: "1rem"
+                    }}>
+                        <h3 style={{ margin: "0 0 0.5rem 0" }}>🎮 Multiplayer Mode</h3>
+                        <p style={{ margin: 0, fontSize: "0.9rem", color: "#666" }}>
+                            Speel met vrienden! Real-time muziek raden met live scoreboard.
+                        </p>
+                    </div>
+                    <Button
+                        component={Link}
+                        to="/multiplayer"
+                        variant="contained"
+                        style={{
+                            backgroundColor: "#8b5cf6",
+                            color: "white",
+                            width: "10rem",
+                            fontWeight: "bold"
+                        }}
+                    >
+                        Multiplayer 🎵
+                    </Button>
+                </div>
+            </Box>
         </div>
     );
 };

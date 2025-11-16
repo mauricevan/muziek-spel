@@ -6,6 +6,7 @@ import Guess from "./Guess";
 import Home from "./Home";
 import Results from "./Results";
 import Callback from "./Callback";
+import MultiplayerLobby from "./MultiplayerLobby";
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
 import { ScoreProvider } from "../contexts/ScoreContext";
 
@@ -66,6 +67,9 @@ const App = () => {
                         <Switch>
                             <Route exact path="/callback">
                                 <Callback />
+                            </Route>
+                            <Route exact path="/multiplayer">
+                                <MultiplayerLobby />
                             </Route>
                             <Route exact path="/guess">
                                 {redirectFlag ? (
