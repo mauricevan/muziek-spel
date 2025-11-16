@@ -7,9 +7,5 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm run server
     envVars:
-      - key: PORT
-        value: 3001
       - key: NODE_ENV
         value: production
-      - key: SOCKET_URL
-        sync: false
