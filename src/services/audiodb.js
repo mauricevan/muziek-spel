@@ -85,7 +85,9 @@ export const getArtistsByGenre = async (genre, limit = 10) => {
         'indie': ['Arctic Monkeys', 'The Strokes', 'Tame Impala', 'MGMT', 'Florence and the Machine']
     };
 
-    const artists = genreArtists[genre.toLowerCase()] || genreArtists['pop'];
+    // Handle null/undefined genre with safe navigation and default to 'pop'
+    const normalizedGenre = genre?.toLowerCase() || 'pop';
+    const artists = genreArtists[normalizedGenre] || genreArtists['pop'];
     const results = [];
 
     // Get random subset
