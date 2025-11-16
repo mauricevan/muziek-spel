@@ -22,6 +22,7 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
     const audioRef = useRef(null);
     const chatEndRef = useRef(null);
     const timerRef = useRef(null);
+    const notificationTimeoutRef = useRef(null);
 
     useEffect(() => {
         // Socket listeners
@@ -51,12 +52,22 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
             if (timerRef.current) {
                 clearInterval(timerRef.current);
             }
+            if (notificationTimeoutRef.current) {
+                clearTimeout(notificationTimeoutRef.current);
+            }
         };
     }, [isAdmin]);
 
     useEffect(() => {
-        // Auto-scroll chat
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // Auto-scroll chat with error handling
+        if (chatEndRef.current) {
+            try {
+                chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                // Silently handle if node is being removed
+                console.debug('Chat scroll failed (component unmounting):', error.message);
+            }
+        }
     }, [chatMessages]);
 
     const handleRoomUpdate = (data) => {
@@ -279,8 +290,16 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
     };
 
     const showNotification = (message) => {
+        // Clear any existing notification timeout
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+        }
+
         setNotification(message);
-        setTimeout(() => setNotification(''), 3000);
+        notificationTimeoutRef.current = setTimeout(() => {
+            setNotification('');
+            notificationTimeoutRef.current = null;
+        }, 3000);
     };
 
     const toggleAudio = () => {

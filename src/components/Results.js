@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import ResultsContainer from "./result/ResultsContainer";
 import { useScore } from "../contexts/ScoreContext";
 import confetti from 'canvas-confetti';
 import { FaHome, FaTrophy, FaChartLine, FaRedo, FaArrowLeft } from 'react-icons/fa';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const Results = ({ artists, correctGuess, guess }) => {
     const { score, streak, totalQuestions, correctAnswers, saveHighScore, getHighScores } = useScore();
@@ -13,6 +13,9 @@ const Results = ({ artists, correctGuess, guess }) => {
     const [scoreSaved, setScoreSaved] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
     const darkMode = localStorage.getItem("darkMode") === "true";
+
+    const confettiIntervalRef = useRef(null);
+    const confettiTimeoutRef = useRef(null);
 
     const isCorrect = correctGuess === guess;
     const accuracy = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100).toFixed(1) : 0;
@@ -32,6 +35,16 @@ const Results = ({ artists, correctGuess, guess }) => {
             setShowConfetti(true);
             fireConfetti();
         }
+
+        // Cleanup timers on unmount
+        return () => {
+            if (confettiIntervalRef.current) {
+                clearInterval(confettiIntervalRef.current);
+            }
+            if (confettiTimeoutRef.current) {
+                clearTimeout(confettiTimeoutRef.current);
+            }
+        };
     }, [darkMode, isCorrect]);
 
     const fireConfetti = () => {
@@ -43,11 +56,18 @@ const Results = ({ artists, correctGuess, guess }) => {
             return Math.random() * (max - min) + min;
         }
 
-        const interval = setInterval(function() {
+        // Clear any existing interval
+        if (confettiIntervalRef.current) {
+            clearInterval(confettiIntervalRef.current);
+        }
+
+        confettiIntervalRef.current = setInterval(function() {
             const timeLeft = animationEnd - Date.now();
 
             if (timeLeft <= 0) {
-                return clearInterval(interval);
+                clearInterval(confettiIntervalRef.current);
+                confettiIntervalRef.current = null;
+                return;
             }
 
             const particleCount = 50 * (timeLeft / duration);
@@ -67,12 +87,18 @@ const Results = ({ artists, correctGuess, guess }) => {
 
         // Extra burst for high scores
         if (score > 150) {
-            setTimeout(() => {
+            // Clear any existing timeout
+            if (confettiTimeoutRef.current) {
+                clearTimeout(confettiTimeoutRef.current);
+            }
+
+            confettiTimeoutRef.current = setTimeout(() => {
                 confetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { y: 0.6 }
                 });
+                confettiTimeoutRef.current = null;
             }, 500);
         }
     };
@@ -90,8 +116,6 @@ const Results = ({ artists, correctGuess, guess }) => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 p-4 sm:p-8">
-            <Toaster position="top-center" />
-
             <div className="max-w-6xl mx-auto">
                 {/* Back Button */}
                 <div className="mb-6 animate-slide-down">

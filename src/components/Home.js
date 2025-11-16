@@ -4,7 +4,7 @@ import { getArtistsByGenre, getAlbumsByArtist, getTracksByAlbum } from "../servi
 import { getTrackPreviews } from "../services/deezer";
 import LoadingSpinner from "./shared/LoadingSpinner";
 import { PREVIEW_DURATIONS } from "../constants/playlists";
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
     FaMusic, FaGuitar, FaDrum, FaCompactDisc,
     FaBroadcastTower, FaMicrophone, FaHeadphones,
@@ -233,8 +233,6 @@ const Home = ({
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 p-4 sm:p-8 animate-fade-in">
-            <Toaster position="top-center" />
-
             <div className="max-w-6xl mx-auto">
                 {/* Header met Dark Mode Toggle */}
                 <div className="flex justify-between items-center mb-8">

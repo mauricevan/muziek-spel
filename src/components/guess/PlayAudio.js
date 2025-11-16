@@ -7,6 +7,7 @@ const PlayAudio = ({ idx, mp3, playing, setPlaying, previewDuration = 30 }) => {
     const [progress, setProgress] = useState(0);
     const [loadError, setLoadError] = useState(false);
     const progressInterval = useRef(null);
+    const mountedRef = useRef(false);
     const [volume, setVolume] = useState(
         Number(localStorage.getItem("audioVolume")) || 0.7
     );
@@ -20,27 +21,45 @@ const PlayAudio = ({ idx, mp3, playing, setPlaying, previewDuration = 30 }) => {
             html5: true,
             onload: function() {
                 console.log('Audio loaded:', mp3);
-                setLoadError(false);
+                if (mountedRef.current) {
+                    setLoadError(false);
+                }
             },
             onloaderror: function(id, error) {
                 console.error('Failed to load audio:', error, 'URL:', mp3);
-                setLoadError(true);
-                setPlaying({});
+                if (mountedRef.current) {
+                    setLoadError(true);
+                    setPlaying({});
+                }
             },
             onplayerror: function(id, error) {
                 console.error('Failed to play audio:', error, 'URL:', mp3);
-                setLoadError(true);
-                setPlaying({});
+                if (mountedRef.current) {
+                    setLoadError(true);
+                    setPlaying({});
+                }
             },
             onend: function() {
-                setPlaying({});
-                setProgress(0);
+                if (mountedRef.current) {
+                    setPlaying({});
+                    setProgress(0);
+                }
                 if (progressInterval.current) {
                     clearInterval(progressInterval.current);
                 }
             }
         })
     );
+
+    useEffect(() => {
+        // Mark component as mounted
+        mountedRef.current = true;
+
+        return () => {
+            // Mark component as unmounted
+            mountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         // Update volume when it changes globally
@@ -90,14 +109,21 @@ const PlayAudio = ({ idx, mp3, playing, setPlaying, previewDuration = 30 }) => {
         const duration = previewDuration * 1000;
 
         progressInterval.current = setInterval(() => {
+            if (!mountedRef.current) {
+                clearInterval(progressInterval.current);
+                return;
+            }
+
             const elapsed = Date.now() - startTime;
             const newProgress = Math.min((elapsed / duration) * 100, 100);
             setProgress(newProgress);
 
             if (elapsed >= duration) {
                 sound.stop();
-                setPlaying({});
-                setProgress(0);
+                if (mountedRef.current) {
+                    setPlaying({});
+                    setProgress(0);
+                }
                 clearInterval(progressInterval.current);
             }
         }, 100);
