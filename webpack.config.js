@@ -3,6 +3,9 @@ const webpack = require('webpack')
 const path = require('path')
 require('dotenv').config()
 
+// Standaard socket URL voor development
+const SOCKET_URL = process.env.SOCKET_URL || 'http://localhost:3001'
+
 module.exports = {
   entry: ['regenerator-runtime/runtime.js', './src/index.js'],
   output: {
@@ -23,7 +26,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: ['style-loader', 'css-loader', 'postcss-loader']
       },
       {
         test: /\.(png|svg|jpg|gif)$/,
@@ -42,7 +45,8 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       'process.env.REACT_APP_SPOTIFY_CLIENT_ID': JSON.stringify(process.env.REACT_APP_SPOTIFY_CLIENT_ID),
-      'process.env.REACT_APP_REDIRECT_URI': JSON.stringify(process.env.REACT_APP_REDIRECT_URI)
+      'process.env.REACT_APP_REDIRECT_URI': JSON.stringify(process.env.REACT_APP_REDIRECT_URI),
+      'process.env.SOCKET_URL': JSON.stringify(SOCKET_URL)
     })
   ],
   mode: 'production'
