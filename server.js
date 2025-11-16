@@ -7,6 +7,7 @@ const cors = require('cors');
 const fetch = require('node-fetch');
 const http = require('http');
 const socketIO = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -22,6 +23,11 @@ const PORT = process.env.PORT || 3001;
 // Enable CORS voor frontend
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from dist directory (production)
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, 'dist')));
+}
 
 const DEEZER_API_BASE = 'https://api.deezer.com';
 
@@ -122,6 +128,17 @@ app.get('/api/leaderboard', (req, res) => {
         .slice(0, 20);
     res.json(leaderboard);
 });
+
+/**
+ * Catch-all route voor React Router (SPA)
+ * Moet LAATSTE zijn na alle API routes
+ * Express v5 requires /(.*) instead of *
+ */
+if (process.env.NODE_ENV === 'production') {
+    app.get(/^\/(?!api|health).*/, (req, res) => {
+        res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
+}
 
 // ============================================
 // SOCKET.IO MULTIPLAYER LOGIC

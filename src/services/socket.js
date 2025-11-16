@@ -1,7 +1,20 @@
 import io from 'socket.io-client';
 
 // Socket.io client voor multiplayer functionaliteit
-const SOCKET_URL = process.env.SOCKET_URL || 'http://localhost:3001';
+// In productie: gebruik huidige host (zelfde als waar frontend draait)
+// In development: gebruik localhost:3001
+const getSocketURL = () => {
+    if (typeof window !== 'undefined') {
+        // Browser omgeving
+        if (window.location.hostname === 'localhost') {
+            return 'http://localhost:3001';
+        }
+        // Productie: gebruik huidige origin (protocol + host)
+        return window.location.origin;
+    }
+    // Fallback (zou niet moeten gebeuren in browser)
+    return 'http://localhost:3001';
+};
 
 class SocketService {
     constructor() {
@@ -13,6 +26,9 @@ class SocketService {
         if (this.socket?.connected) {
             return this.socket;
         }
+
+        const SOCKET_URL = getSocketURL();
+        console.log('🔌 Connecting to socket server:', SOCKET_URL);
 
         this.socket = io(SOCKET_URL, {
             transports: ['websocket', 'polling'],
