@@ -479,9 +479,12 @@ function endGame(room, winner) {
 // START SERVER
 // ============================================
 
-server.listen(PORT, () => {
-    console.log(`🎵 Muziek Raad Spel Server running on port ${PORT}`);
-    console.log(`📡 Deezer API proxy: http://localhost:${PORT}/api/deezer`);
-    console.log(`🎮 Multiplayer socket: ws://localhost:${PORT}`);
-    console.log(`🏆 Leaderboard: http://localhost:${PORT}/api/leaderboard`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+    console.log(`🎵 Muziek Raad Spel Server running on ${HOST}:${PORT}`);
+    console.log(`📡 Deezer API proxy ready`);
+    console.log(`🎮 Multiplayer socket ready`);
+    console.log(`🏆 Leaderboard ready`);
+    console.log(`✅ Server is ready to accept connections`);
 });
