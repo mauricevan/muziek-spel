@@ -101,9 +101,16 @@ class SocketService {
     }
 
     // Submit guess
-    submitGuess(guess, trackInfo) {
+    submitGuess(guess, isCorrect) {
         if (this.socket) {
-            this.socket.emit('submitGuess', { guess, trackInfo });
+            this.socket.emit('submitGuess', { guess, isCorrect });
+        }
+    }
+
+    // Sync track (admin only)
+    syncTrack(trackInfo) {
+        if (this.socket) {
+            this.socket.emit('syncTrack', { trackInfo });
         }
     }
 
