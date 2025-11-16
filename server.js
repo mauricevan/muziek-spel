@@ -41,10 +41,11 @@ const playerUsernames = new Map(); // socketId -> username mapping
 const playerScores = new Map(); // username -> total score (persistent)
 
 /**
- * Proxy endpoint voor Deezer track search
- * GET /api/deezer/search?q=artist+track
+ * Proxy endpoint voor music track search
+ * GET /api/music/search?q=artist+track
+ * Note: Route hernoemd van /api/deezer naar /api/music om ad blocker problemen te voorkomen
  */
-app.get('/api/deezer/search', async (req, res) => {
+app.get('/api/music/search', async (req, res) => {
     try {
         const query = req.query.q;
 
@@ -67,9 +68,9 @@ app.get('/api/deezer/search', async (req, res) => {
 
 /**
  * Proxy endpoint voor artist search
- * GET /api/deezer/artist/search?q=artist
+ * GET /api/music/artist/search?q=artist
  */
-app.get('/api/deezer/artist/search', async (req, res) => {
+app.get('/api/music/artist/search', async (req, res) => {
     try {
         const query = req.query.q;
 
@@ -92,9 +93,9 @@ app.get('/api/deezer/artist/search', async (req, res) => {
 
 /**
  * Proxy endpoint voor artist top tracks
- * GET /api/deezer/artist/:id/top
+ * GET /api/music/artist/:id/top
  */
-app.get('/api/deezer/artist/:id/top', async (req, res) => {
+app.get('/api/music/artist/:id/top', async (req, res) => {
     try {
         const artistId = req.params.id;
 
