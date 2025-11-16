@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socketService from '../services/socket';
 import { Howl } from 'howler';
-import { searchTrack } from '../services/deezer';
+import { getMultipleTracks } from '../services/deezer';
 import '../styles/tailwind.css';
 
 const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameState }) => {
     const [players, setPlayers] = useState([]);
     const [currentTrack, setCurrentTrack] = useState(null);
-    const [guess, setGuess] = useState('');
+    const [multipleChoiceOptions, setMultipleChoiceOptions] = useState([]);
+    const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState('');
     const [round, setRound] = useState(1);
@@ -61,7 +62,7 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
     const handleNewRound = (data) => {
         setRound(data.round);
         setHasGuessed(false);
-        setGuess('');
+        setSelectedAnswer(null);
         loadRandomTrack();
         showNotification(`🎵 Ronde ${data.round}!`);
     };
@@ -94,30 +95,42 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
 
     const loadRandomTrack = async () => {
         try {
-            console.log('Loading track for category:', settings.category);
+            console.log('Loading tracks for category:', settings.category);
 
-            // Gebruik de deezer service om een track te zoeken
-            const track = await searchTrack(settings.category, '');
+            // Haal 6 tracks op voor multiple choice
+            const tracks = await getMultipleTracks(settings.category, 6);
 
-            if (track && track.preview) {
-                console.log('Track loaded:', track.title, 'by', track.artist?.name);
+            if (tracks && tracks.length >= 6) {
+                // Kies random track als het correcte antwoord
+                const correctIndex = Math.floor(Math.random() * tracks.length);
+                const correctTrack = tracks[correctIndex];
+
+                console.log('Correct track:', correctTrack.title, 'by', correctTrack.artist?.name);
 
                 setCurrentTrack({
-                    title: track.title,
-                    artist: track.artist?.name || 'Unknown',
-                    preview: track.preview,
-                    cover: track.album?.cover_medium
+                    title: correctTrack.title,
+                    artist: correctTrack.artist?.name || 'Unknown',
+                    preview: correctTrack.preview,
+                    cover: correctTrack.album?.cover_medium
                 });
 
+                // Shuffle de opties voor multiple choice
+                const shuffledTracks = [...tracks].sort(() => Math.random() - 0.5);
+                setMultipleChoiceOptions(shuffledTracks.map(track => ({
+                    title: track.title,
+                    artist: track.artist?.name || 'Unknown',
+                    isCorrect: track.title === correctTrack.title && track.artist?.name === correctTrack.artist?.name
+                })));
+
                 // Start audio
-                playAudio(track.preview);
+                playAudio(correctTrack.preview);
             } else {
-                console.error('No track found or no preview available');
-                showNotification('❌ Geen track met preview gevonden');
+                console.error('Not enough tracks found for multiple choice');
+                showNotification('❌ Niet genoeg tracks gevonden voor multiple choice');
             }
         } catch (error) {
-            console.error('Error loading track:', error);
-            showNotification('❌ Error bij laden van track');
+            console.error('Error loading tracks:', error);
+            showNotification('❌ Error bij laden van tracks');
         }
     };
 
@@ -161,12 +174,16 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
         }, 1000);
     };
 
-    const handleSubmitGuess = () => {
-        if (!guess.trim() || hasGuessed) return;
+    const handleSubmitGuess = (option) => {
+        if (hasGuessed) return;
 
-        socketService.submitGuess(guess.trim(), currentTrack);
+        setSelectedAnswer(option);
         setHasGuessed(true);
-        showNotification('Guess ingediend! ⏳');
+
+        // Stuur artiest en titel als guess
+        const guessText = `${option.artist} ${option.title}`;
+        socketService.submitGuess(guessText, currentTrack);
+        showNotification('Antwoord ingediend! ⏳');
     };
 
     const handleSendChat = () => {
@@ -326,33 +343,44 @@ const MultiplayerGame = ({ username, isAdmin, settings, gameState: initialGameSt
                             )}
                         </div>
 
-                        {/* Guess Input */}
+                        {/* Multiple Choice */}
                         <div className="bg-white rounded-2xl shadow-xl p-6">
-                            <h2 className="text-xl font-bold mb-4">🎯 Jouw Guess</h2>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={guess}
-                                    onChange={(e) => setGuess(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSubmitGuess()}
-                                    placeholder="Type artiest of titel..."
-                                    disabled={hasGuessed}
-                                    className="input-field flex-1"
-                                />
-                                <button
-                                    onClick={handleSubmitGuess}
-                                    disabled={hasGuessed || !guess.trim()}
-                                    className={`px-6 py-3 rounded-lg font-bold transition-all ${
-                                        hasGuessed || !guess.trim()
-                                            ? 'bg-gray-300 cursor-not-allowed'
-                                            : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-xl'
-                                    }`}
-                                >
-                                    Submit
-                                </button>
+                            <h2 className="text-xl font-bold mb-4">🎯 Welke track is dit?</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {multipleChoiceOptions.map((option, index) => {
+                                    const isSelected = selectedAnswer === option;
+                                    const showResult = hasGuessed && isSelected;
+
+                                    return (
+                                        <button
+                                            key={index}
+                                            onClick={() => handleSubmitGuess(option)}
+                                            disabled={hasGuessed}
+                                            className={`p-4 rounded-lg text-left transition-all font-medium ${
+                                                hasGuessed
+                                                    ? isSelected
+                                                        ? option.isCorrect
+                                                            ? 'bg-green-100 border-2 border-green-500 text-green-800'
+                                                            : 'bg-red-100 border-2 border-red-500 text-red-800'
+                                                        : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-2 border-purple-300 hover:border-purple-500 hover:shadow-lg transform hover:scale-105'
+                                            }`}
+                                        >
+                                            <div className="font-bold text-purple-600">{option.title}</div>
+                                            <div className="text-sm text-gray-600">{option.artist}</div>
+                                            {showResult && (
+                                                <div className="mt-2 text-sm font-bold">
+                                                    {option.isCorrect ? '✅ Correct!' : '❌ Fout'}
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             {hasGuessed && (
-                                <p className="mt-2 text-green-600 font-semibold">✅ Guess ingediend!</p>
+                                <p className="mt-4 text-center text-green-600 font-semibold">
+                                    ✅ Antwoord ingediend!
+                                </p>
                             )}
                         </div>
 
