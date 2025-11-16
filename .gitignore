@@ -6,6 +6,15 @@
 yarn.lock
 package-lock.json
 
+# Environment variables
+.env
+
+# Claude Code
+.claude/
+
+# Temp files
+nul
+
 .idea/
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm

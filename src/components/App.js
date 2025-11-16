@@ -5,6 +5,7 @@ import { Route, Switch, Redirect } from "react-router-dom";
 import Guess from "./Guess";
 import Home from "./Home";
 import Results from "./Results";
+import Callback from "./Callback";
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
 import { ScoreProvider } from "../contexts/ScoreContext";
 
@@ -63,7 +64,9 @@ const App = () => {
                         style={{ marginTop: "auto", marginBottom: "auto" }}
                     >
                         <Switch>
-
+                            <Route exact path="/callback">
+                                <Callback />
+                            </Route>
                             <Route exact path="/guess">
                                 {redirectFlag ? (
                                     <Redirect to="/" />

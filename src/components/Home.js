@@ -14,14 +14,11 @@ import FormControlLabel from "@material-ui/core/FormControlLabel";
 import FormLabel from "@material-ui/core/FormLabel";
 
 import { Link } from "react-router-dom";
-import fetchFromSpotify, { request } from "../services/api";
+import { getArtistsByGenre, getAlbumsByArtist, getTracksByAlbum } from "../services/audiodb";
+import { getTrackPreviews } from "../services/deezer";
 import ConfigChoicesContainer from "./home/ConfigChoicesContainer";
 import LoadingSpinner from "./shared/LoadingSpinner";
 import { PRESET_PLAYLISTS, PREVIEW_DURATIONS } from "../constants/playlists";
-
-const AUTH_ENDPOINT =
-    "https://nuod0t2zoe.execute-api.us-east-2.amazonaws.com/FT-Classroom/spotify-auth-token";
-const TOKEN_KEY = "whos-who-access-token";
 
 const useStyles = makeStyles((theme) => ({
     formControl: {
@@ -41,13 +38,11 @@ const Home = ({
     setCorrectGuess,
     setRedirectFlag,
 }) => {
-    const [genres, setGenres] = useState([]);
+    const [genres] = useState(["pop", "rock", "hip-hop", "electronic", "jazz", "classical", "country", "r-n-b", "latin", "indie"]);
     const [selectedGenre, setSelectedGenre] = useState(
-        localStorage.getItem("selectedGenre") ?? ""
+        localStorage.getItem("selectedGenre") ?? "pop"
     );
-    const [authLoading, setAuthLoading] = useState(false);
-    const [genresLoading, setGenresLoading] = useState(false);
-    const [token, setToken] = useState("");
+    const [loading, setLoading] = useState(false);
     const [sourceMode, setSourceMode] = useState(
         localStorage.getItem("sourceMode") ?? "genre"
     );
@@ -63,143 +58,107 @@ const Home = ({
 
     const classes = useStyles();
 
-    const loadGenres = async (token) => {
-        setGenresLoading(true);
-        const response = await fetchFromSpotify({
-            token,
-            endpoint: "recommendations/available-genre-seeds",
-        });
-        console.log("Loaded genres:", response);
-        setGenres(response.genres);
-        setGenresLoading(false);
-    };
-
     useEffect(() => {
-        setArtists(), setSongs(), setCorrectGuess();
+        setArtists();
+        setSongs();
+        setCorrectGuess();
         setRedirectFlag(false);
-        setAuthLoading(true);
-
-        const storedTokenString = localStorage.getItem(TOKEN_KEY);
-        if (storedTokenString) {
-            const storedToken = JSON.parse(storedTokenString);
-            if (storedToken.expiration > Date.now()) {
-                console.log("Token found in localstorage");
-                setAuthLoading(false);
-                setToken(storedToken.value);
-                loadGenres(storedToken.value);
-                return;
-            }
-        }
-        console.log("Sending request to AWS endpoint");
-        request(AUTH_ENDPOINT).then(({ access_token, expires_in }) => {
-            const newToken = {
-                value: access_token,
-                expiration: Date.now() + (expires_in - 20) * 1000,
-            };
-            localStorage.setItem(TOKEN_KEY, JSON.stringify(newToken));
-            console.log(newToken.value);
-            setAuthLoading(false);
-            setToken(newToken.value);
-            loadGenres(newToken.value);
-        });
     }, []);
 
-    if (authLoading || genresLoading) {
+    if (loading) {
         return <LoadingSpinner />;
     }
 
     const getSongs = async ({ _artists, _correctIdx }) => {
-        let _tracks;
-        let response;
-        response = await fetchFromSpotify({
-            token,
-            endpoint: `artists/${_artists[_correctIdx].id}/top-tracks?market=US`,
-        });
-        _tracks = response.tracks.filter((x) => x.preview_url !== null);
-        _tracks = _tracks.slice(0, config.qtySongs);
-        if (_tracks.length < config.qtySongs) {
-            const _correctIdx = Math.floor(Math.random() * config.qtyArtists);
-            setCorrectGuess(_artists[_correctIdx].name);
-            getSongs({_artists, _correctIdx})
-        }
-        setSongs(_tracks);
-    };
-
-    const getTracksFromPlaylist = async (playlistId) => {
         try {
-            const response = await fetchFromSpotify({
-                token,
-                endpoint: `playlists/${playlistId}/tracks`,
-            });
+            console.log("Getting songs for artist:", _artists[_correctIdx]);
 
-            if (!response.items || response.items.length === 0) {
-                alert('No tracks found in this playlist');
-                return null;
+            // Get albums for the correct artist
+            const albums = await getAlbumsByArtist(_artists[_correctIdx].id);
+
+            if (!albums || albums.length === 0) {
+                console.log("No albums found, using artist info instead");
+                // If no albums, create a dummy track using artist info
+                setSongs([{
+                    idTrack: _artists[_correctIdx].id,
+                    strTrack: _artists[_correctIdx].name + " - Popular Track",
+                    strArtist: _artists[_correctIdx].name,
+                    strAlbumThumb: _artists[_correctIdx].thumb
+                }]);
+                return;
             }
 
-            let _tracks = response.items
-                .map(item => item.track)
-                .filter(track => track && track.preview_url !== null);
+            // Get tracks from first album
+            const firstAlbum = albums[0];
+            const tracks = await getTracksByAlbum(firstAlbum.idAlbum);
 
-            if (_tracks.length === 0) {
-                alert('No tracks with preview URLs found in this playlist');
-                return null;
+            if (!tracks || tracks.length === 0) {
+                // Use album info if no tracks
+                setSongs([{
+                    idTrack: firstAlbum.idAlbum,
+                    strTrack: firstAlbum.strAlbum,
+                    strArtist: _artists[_correctIdx].name,
+                    strAlbumThumb: firstAlbum.strAlbumThumb
+                }]);
+                return;
             }
 
-            return _tracks;
+            // Limit to configured number of songs
+            const selectedTracks = tracks.slice(0, config.qtySongs);
+
+            // Get Deezer preview URLs via backend proxy
+            console.log("Fetching Deezer previews for tracks...");
+            const tracksWithPreviews = await getTrackPreviews(selectedTracks);
+            console.log("Tracks with previews:", tracksWithPreviews);
+
+            setSongs(tracksWithPreviews);
+
         } catch (error) {
-            console.error('Error fetching playlist:', error);
-            if (error.response && error.response.status === 404) {
-                alert('Playlist not found. Please check the ID and try again.');
-            } else if (error.response && error.response.status === 429) {
-                alert('Too many requests. Please wait a moment and try again.');
-            } else {
-                alert('Error loading playlist. Please try again.');
-            }
-            return null;
+            console.error("Error getting songs:", error);
+            // Create fallback song
+            setSongs([{
+                idTrack: _artists[_correctIdx].id,
+                strTrack: "Unknown Track",
+                strArtist: _artists[_correctIdx].name
+            }]);
         }
     };
 
     const getArtists = async () => {
-        let _tracks = [];
-        let response;
+        try {
+            setLoading(true);
+            console.log("Getting artists for genre:", config.selectedGenre);
 
-        if (sourceMode === 'playlist') {
-            const playlistId = selectedPlaylist || customPlaylistId;
-            if (!playlistId) {
-                alert('Please select or enter a playlist ID');
+            // Get artists from TheAudioDB based on genre
+            const artistsData = await getArtistsByGenre(config.selectedGenre, config.qtyArtists);
+
+            if (!artistsData || artistsData.length === 0) {
+                alert('Geen artiesten gevonden voor dit genre. Probeer een ander genre!');
+                setLoading(false);
                 return null;
             }
-            _tracks = await getTracksFromPlaylist(playlistId);
-            if (!_tracks) return null;
 
-            // Shuffle and get unique artists
-            _tracks = _tracks.sort(() => Math.random() - 0.5);
-        } else {
-            // Original genre-based approach
-            while (_tracks.length < config.qtyArtists) {
-                response = await fetchFromSpotify({
-                    token,
-                    endpoint: `recommendations?limit=${
-                        config.qtyArtists * 3
-                    }&market=US&seed_genres=${config.selectedGenre}`,
-                });
-                _tracks = response.tracks.filter((x) => x.preview_url !== null);
-            }
-        }
+            console.log("Got artists:", artistsData);
 
-        console.log("getArtists tracks:", _tracks);
-        const _artists = [];
-        for (const x of _tracks.slice(0, config.qtyArtists)) {
-            _artists.push({
-                name: x.artists[0].name,
-                id: x.artists[0].id,
-            });
+            const _artists = artistsData.map(artist => ({
+                name: artist.strArtist,
+                id: artist.idArtist,
+                thumb: artist.strArtistThumb,
+                genre: artist.strGenre
+            }));
+
+            setArtists(_artists);
+            const _correctIdx = Math.floor(Math.random() * _artists.length);
+            setCorrectGuess(_artists[_correctIdx].name);
+
+            setLoading(false);
+            return { _artists, _correctIdx };
+        } catch (error) {
+            console.error("Error getting artists:", error);
+            alert('Er is een fout opgetreden bij het ophalen van artiesten. Probeer het opnieuw!');
+            setLoading(false);
+            return null;
         }
-        setArtists(_artists);
-        const _correctIdx = Math.floor(Math.random() * config.qtyArtists);
-        setCorrectGuess(_artists[_correctIdx].name);
-        return { _artists, _correctIdx };
     };
 
     const saveConfig = () => {
@@ -228,102 +187,34 @@ const Home = ({
         <div>
             <h1 style={{ textAlign: "center" }}>Muziek Raad Spelletje 🎵</h1>
             <p style={{ textAlign: "center" }}>
-                Kies je muziekbron, configureer het spel en raad de artiest!
+                Kies je genre, configureer het spel en raad de artiest!
+            </p>
+            <p style={{ textAlign: "center", fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" }}>
+                Powered by TheAudioDB & Deezer - Geen login vereist!
             </p>
 
-            {/* Music Source Selection */}
-            <FormControl component="fieldset" style={{ margin: "1rem 0" }}>
-                <FormLabel component="legend">Muziekbron</FormLabel>
-                <RadioGroup
-                    value={sourceMode}
-                    onChange={(e) => setSourceMode(e.target.value)}
-                >
-                    <FormControlLabel
-                        value="genre"
-                        control={<Radio color="primary" />}
-                        label="Genre (Spotify Recommendations)"
-                    />
-                    <FormControlLabel
-                        value="playlist"
-                        control={<Radio color="primary" />}
-                        label="Playlist (Tijdperk/Eigen keuze)"
-                    />
-                </RadioGroup>
-            </FormControl>
-
             {/* Genre Selection */}
-            {sourceMode === "genre" && (
-                <FormControl variant="outlined" className={classes.formControl} fullWidth>
-                    <InputLabel id="genre-select-label">Genre</InputLabel>
-                    <Select
-                        labelId="genre-select-label"
-                        value={selectedGenre}
-                        onChange={(event) => {
-                            setSelectedGenre(event.target.value);
-                            setConfig({
-                                ...config,
-                                selectedGenre: event.target.value,
-                            });
-                        }}
-                        label="Genre"
-                    >
-                        <MenuItem value="">
-                            <em>Selecteer een genre</em>
+            <FormControl variant="outlined" className={classes.formControl} fullWidth>
+                <InputLabel id="genre-select-label">Selecteer een Genre</InputLabel>
+                <Select
+                    labelId="genre-select-label"
+                    value={selectedGenre}
+                    onChange={(event) => {
+                        setSelectedGenre(event.target.value);
+                        setConfig({
+                            ...config,
+                            selectedGenre: event.target.value,
+                        });
+                    }}
+                    label="Selecteer een Genre"
+                >
+                    {genres.map((genre) => (
+                        <MenuItem key={genre} value={genre}>
+                            {genre.charAt(0).toUpperCase() + genre.slice(1)}
                         </MenuItem>
-                        {genres.map((genre) => (
-                            <MenuItem key={genre} value={genre}>
-                                {genre}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            )}
-
-            {/* Playlist Selection */}
-            {sourceMode === "playlist" && (
-                <>
-                    <FormControl variant="outlined" className={classes.formControl} fullWidth>
-                        <InputLabel id="playlist-select-label">
-                            Preset Playlists (Tijdperken)
-                        </InputLabel>
-                        <Select
-                            labelId="playlist-select-label"
-                            value={selectedPlaylist}
-                            onChange={(event) => {
-                                setSelectedPlaylist(event.target.value);
-                                setCustomPlaylistId(""); // Clear custom ID when preset selected
-                            }}
-                            label="Preset Playlists (Tijdperken)"
-                        >
-                            <MenuItem value="">
-                                <em>Selecteer een tijdperk</em>
-                            </MenuItem>
-                            {Object.entries(PRESET_PLAYLISTS).map(([key, playlist]) => (
-                                <MenuItem key={key} value={playlist.id}>
-                                    {playlist.name} - {playlist.description}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <Box style={{ margin: "1rem 0", textAlign: "center" }}>
-                        <em>- OF -</em>
-                    </Box>
-
-                    <TextField
-                        fullWidth
-                        variant="outlined"
-                        label="Eigen Playlist ID"
-                        placeholder="Bijv: 37i9dQZF1DXcBWIGoYBM5M"
-                        value={customPlaylistId}
-                        onChange={(e) => {
-                            setCustomPlaylistId(e.target.value);
-                            setSelectedPlaylist(""); // Clear preset when custom entered
-                        }}
-                        helperText="Vind de Playlist ID in de Spotify URL"
-                    />
-                </>
-            )}
+                    ))}
+                </Select>
+            </FormControl>
 
             {/* Preview Duration */}
             <FormControl variant="outlined" className={classes.formControl} fullWidth>
@@ -362,10 +253,7 @@ const Home = ({
                     component={Link}
                     to="/guess"
                     onClick={() => handlePlay()}
-                    disabled={
-                        (sourceMode === "genre" && selectedGenre === "") ||
-                        (sourceMode === "playlist" && !selectedPlaylist && !customPlaylistId)
-                    }
+                    disabled={!selectedGenre || loading}
                     variant="contained"
                     color="primary"
                     style={{
@@ -375,7 +263,7 @@ const Home = ({
                         width: "10rem",
                     }}
                 >
-                    Speel! 🎮
+                    {loading ? "Laden..." : "Speel! 🎮"}
                 </Button>
             </Box>
         </div>
