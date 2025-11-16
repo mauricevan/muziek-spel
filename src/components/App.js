@@ -9,6 +9,7 @@ import Callback from "./Callback";
 import MultiplayerLobby from "./MultiplayerLobby";
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
 import { ScoreProvider } from "../contexts/ScoreContext";
+import { Toaster } from 'react-hot-toast';
 
 const theme = createTheme({
     palette: {
@@ -58,6 +59,7 @@ const App = () => {
 
     return (
         <ScoreProvider>
+            <Toaster position="top-center" />
             <div style={{ display: "flex", height: "100%" }}>
                 <ThemeProvider theme={theme}>
                     <Container

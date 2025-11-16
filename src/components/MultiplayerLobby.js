@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import socketService from '../services/socket';
 import MultiplayerGame from './MultiplayerGame';
 import { FaArrowLeft, FaMusic } from 'react-icons/fa';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import '../styles/tailwind.css';
 
 const MUSIC_FACTS = [
@@ -43,6 +43,8 @@ const MultiplayerLobby = () => {
         gameState: null
     });
 
+    const errorTimeoutRef = useRef(null);
+
     useEffect(() => {
         // Check localStorage voor saved username
         const savedUsername = localStorage.getItem('musicGameUsername');
@@ -78,6 +80,9 @@ const MultiplayerLobby = () => {
             socketService.removeAllListeners('roomStatus');
             socketService.removeAllListeners('roomStatusChanged');
             clearInterval(factInterval);
+            if (errorTimeoutRef.current) {
+                clearTimeout(errorTimeoutRef.current);
+            }
         };
     }, []);
 
@@ -99,8 +104,16 @@ const MultiplayerLobby = () => {
     };
 
     const handleError = (data) => {
+        // Clear any existing error timeout
+        if (errorTimeoutRef.current) {
+            clearTimeout(errorTimeoutRef.current);
+        }
+
         setError(data.message);
-        setTimeout(() => setError(''), 3000);
+        errorTimeoutRef.current = setTimeout(() => {
+            setError('');
+            errorTimeoutRef.current = null;
+        }, 3000);
     };
 
     const handleRoomStatus = (status) => {
@@ -158,7 +171,6 @@ const MultiplayerLobby = () => {
     if (!joined) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-4">
-                <Toaster position="top-center" />
                 {/* Back Button */}
                 <Link
                     to="/"
@@ -243,8 +255,6 @@ const MultiplayerLobby = () => {
     // Lobby scherm
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-4">
-            <Toaster position="top-center" />
-
             {/* Back Button */}
             <Link
                 to="/"
