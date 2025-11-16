@@ -1,34 +1,28 @@
 import React, { useEffect, useState } from "react";
-
-import Button from "@material-ui/core/Button";
-import Box from "@material-ui/core/Box";
-import { makeStyles } from "@material-ui/core/styles";
-import FormControl from "@material-ui/core/FormControl";
-import InputLabel from "@material-ui/core/InputLabel";
-import MenuItem from "@material-ui/core/MenuItem";
-import Select from "@material-ui/core/Select";
-import TextField from "@material-ui/core/TextField";
-import Radio from "@material-ui/core/Radio";
-import RadioGroup from "@material-ui/core/RadioGroup";
-import FormControlLabel from "@material-ui/core/FormControlLabel";
-import FormLabel from "@material-ui/core/FormLabel";
-
 import { Link } from "react-router-dom";
 import { getArtistsByGenre, getAlbumsByArtist, getTracksByAlbum } from "../services/audiodb";
 import { getTrackPreviews } from "../services/deezer";
-import ConfigChoicesContainer from "./home/ConfigChoicesContainer";
 import LoadingSpinner from "./shared/LoadingSpinner";
-import { PRESET_PLAYLISTS, PREVIEW_DURATIONS } from "../constants/playlists";
+import { PREVIEW_DURATIONS } from "../constants/playlists";
+import toast, { Toaster } from 'react-hot-toast';
+import {
+    FaMusic, FaGuitar, FaDrum, FaCompactDisc,
+    FaBroadcastTower, FaMicrophone, FaHeadphones,
+    FaRecordVinyl, FaMoon, FaSun
+} from 'react-icons/fa';
 
-const useStyles = makeStyles((theme) => ({
-    formControl: {
-        margin: theme.spacing(1),
-        minWidth: 120,
-    },
-    selectEmpty: {
-        marginTop: theme.spacing(2),
-    },
-}));
+const GENRE_ICONS = {
+    "pop": FaMusic,
+    "rock": FaGuitar,
+    "hip-hop": FaMicrophone,
+    "electronic": FaBroadcastTower,
+    "jazz": FaMusic,
+    "classical": FaCompactDisc,
+    "country": FaRecordVinyl,
+    "r-n-b": FaCompactDisc,
+    "latin": FaDrum,
+    "indie": FaHeadphones
+};
 
 const Home = ({
     config,
@@ -43,27 +37,38 @@ const Home = ({
         localStorage.getItem("selectedGenre") ?? "pop"
     );
     const [loading, setLoading] = useState(false);
-    const [sourceMode, setSourceMode] = useState(
-        localStorage.getItem("sourceMode") ?? "genre"
-    );
-    const [selectedPlaylist, setSelectedPlaylist] = useState(
-        localStorage.getItem("selectedPlaylist") ?? ""
-    );
-    const [customPlaylistId, setCustomPlaylistId] = useState(
-        localStorage.getItem("customPlaylistId") ?? ""
-    );
     const [previewDuration, setPreviewDuration] = useState(
         Number(localStorage.getItem("previewDuration")) || 30
     );
-
-    const classes = useStyles();
+    const [darkMode, setDarkMode] = useState(
+        localStorage.getItem("darkMode") === "true"
+    );
+    const [numSongs, setNumSongs] = useState(
+        Number(localStorage.getItem("qtySongs")) || 1
+    );
+    const [numArtists, setNumArtists] = useState(
+        Number(localStorage.getItem("qtyArtists")) || 2
+    );
 
     useEffect(() => {
         setArtists();
         setSongs();
         setCorrectGuess();
         setRedirectFlag(false);
-    }, []);
+
+        // Apply dark mode
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [darkMode]);
+
+    const toggleDarkMode = () => {
+        const newMode = !darkMode;
+        setDarkMode(newMode);
+        localStorage.setItem("darkMode", newMode);
+    };
 
     if (loading) {
         return <LoadingSpinner />;
@@ -115,6 +120,7 @@ const Home = ({
 
         } catch (error) {
             console.error("Error getting songs:", error);
+            toast.error("Er is een fout opgetreden bij het ophalen van tracks");
             // Create fallback song
             setSongs([{
                 idTrack: _artists[_correctIdx].id,
@@ -133,7 +139,7 @@ const Home = ({
             const artistsData = await getArtistsByGenre(config.selectedGenre, config.qtyArtists);
 
             if (!artistsData || artistsData.length === 0) {
-                alert('Geen artiesten gevonden voor dit genre. Probeer een ander genre!');
+                toast.error('Geen artiesten gevonden voor dit genre. Probeer een ander genre!');
                 setLoading(false);
                 return null;
             }
@@ -155,7 +161,7 @@ const Home = ({
             return { _artists, _correctIdx };
         } catch (error) {
             console.error("Error getting artists:", error);
-            alert('Er is een fout opgetreden bij het ophalen van artiesten. Probeer het opnieuw!');
+            toast.error('Er is een fout opgetreden bij het ophalen van artiesten. Probeer het opnieuw!');
             setLoading(false);
             return null;
         }
@@ -163,139 +169,269 @@ const Home = ({
 
     const saveConfig = () => {
         localStorage.setItem("selectedGenre", selectedGenre);
-        localStorage.setItem("qtyArtists", config.qtyArtists);
-        localStorage.setItem("qtySongs", config.qtySongs);
-        localStorage.setItem("sourceMode", sourceMode);
-        localStorage.setItem("selectedPlaylist", selectedPlaylist);
-        localStorage.setItem("customPlaylistId", customPlaylistId);
+        localStorage.setItem("qtyArtists", numArtists);
+        localStorage.setItem("qtySongs", numSongs);
         localStorage.setItem("previewDuration", previewDuration);
     };
 
     const handlePlay = async () => {
+        if (!selectedGenre) {
+            toast.error('Selecteer eerst een genre!');
+            return;
+        }
+
         saveConfig();
         setConfig({
             ...config,
+            selectedGenre: selectedGenre,
+            qtySongs: numSongs,
+            qtyArtists: numArtists,
             previewDuration: previewDuration
         });
+
+        const loadingToast = toast.loading('Muziek wordt geladen...');
         const artistsData = await getArtists();
+        toast.dismiss(loadingToast);
+
         if (artistsData) {
             getSongs(artistsData);
         }
     };
 
+    const GenreIcon = GENRE_ICONS[selectedGenre] || FaMusic;
+
     return (
-        <div>
-            <h1 style={{ textAlign: "center" }}>Muziek Raad Spelletje 🎵</h1>
-            <p style={{ textAlign: "center" }}>
-                Kies je genre, configureer het spel en raad de artiest!
-            </p>
-            <p style={{ textAlign: "center", fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" }}>
-                Powered by TheAudioDB & Deezer - Geen login vereist!
-            </p>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 p-4 sm:p-8 animate-fade-in">
+            <Toaster position="top-center" />
 
-            {/* Genre Selection */}
-            <FormControl variant="outlined" className={classes.formControl} fullWidth>
-                <InputLabel id="genre-select-label">Selecteer een Genre</InputLabel>
-                <Select
-                    labelId="genre-select-label"
-                    value={selectedGenre}
-                    onChange={(event) => {
-                        setSelectedGenre(event.target.value);
-                        setConfig({
-                            ...config,
-                            selectedGenre: event.target.value,
-                        });
-                    }}
-                    label="Selecteer een Genre"
-                >
-                    {genres.map((genre) => (
-                        <MenuItem key={genre} value={genre}>
-                            {genre.charAt(0).toUpperCase() + genre.slice(1)}
-                        </MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+            <div className="max-w-6xl mx-auto">
+                {/* Header met Dark Mode Toggle */}
+                <div className="flex justify-between items-center mb-8">
+                    <div className="flex-1" />
+                    <button
+                        onClick={toggleDarkMode}
+                        className="p-3 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+                        aria-label="Toggle dark mode"
+                    >
+                        {darkMode ? (
+                            <FaSun className="text-yellow-400 text-xl" />
+                        ) : (
+                            <FaMoon className="text-gray-700 text-xl" />
+                        )}
+                    </button>
+                </div>
 
-            {/* Preview Duration */}
-            <FormControl variant="outlined" className={classes.formControl} fullWidth>
-                <InputLabel id="duration-select-label">Preview Duur (seconden)</InputLabel>
-                <Select
-                    labelId="duration-select-label"
-                    value={previewDuration}
-                    onChange={(event) => setPreviewDuration(event.target.value)}
-                    label="Preview Duur (seconden)"
-                >
-                    {PREVIEW_DURATIONS.map((duration) => (
-                        <MenuItem key={duration} value={duration}>
-                            {duration} seconden
-                        </MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+                {/* Title Section */}
+                <div className="text-center mb-12 animate-slide-down">
+                    <h1 className="text-5xl sm:text-6xl font-bold mb-4">
+                        <span className="text-gradient">Muziek Raad Spelletje</span> 🎵
+                    </h1>
+                    <p className="text-xl text-gray-700 dark:text-gray-300 mb-2">
+                        Kies je genre, configureer het spel en raad de artiest!
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Powered by TheAudioDB & Deezer - Geen login vereist!
+                    </p>
+                </div>
 
-            <h3>Aantal Songs</h3>
-            <ConfigChoicesContainer
-                min={1}
-                config={config}
-                setConfig={setConfig}
-                type="songs"
-            />
-            <h3>Aantal Keuzes (Artists)</h3>
-            <ConfigChoicesContainer
-                min={2}
-                config={config}
-                setConfig={setConfig}
-                type="artists"
-            />
+                {/* Genre Selection - Cards */}
+                <div className="mb-12 animate-slide-up">
+                    <h2 className="text-2xl font-bold mb-6 text-center dark:text-white">
+                        Selecteer een Genre
+                    </h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {genres.map((genre) => {
+                            const Icon = GENRE_ICONS[genre] || FaMusic;
+                            const isSelected = selectedGenre === genre;
+                            return (
+                                <button
+                                    key={genre}
+                                    onClick={() => {
+                                        setSelectedGenre(genre);
+                                        setConfig({ ...config, selectedGenre: genre });
+                                    }}
+                                    className={`genre-card ${isSelected ? 'genre-card-selected' : ''} focus-visible-ring`}
+                                    aria-label={`Select ${genre} genre`}
+                                    aria-pressed={isSelected}
+                                >
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Icon className={`text-4xl ${isSelected ? 'text-blue-500' : 'text-gray-600 dark:text-gray-400'}`} />
+                                        <span className={`font-semibold capitalize ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                                            {genre}
+                                        </span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
 
-            <Box display="flex" justifyContent="center" alignItems="center">
-                <Button
-                    component={Link}
-                    to="/guess"
-                    onClick={() => handlePlay()}
-                    disabled={!selectedGenre || loading}
-                    variant="contained"
-                    color="primary"
-                    style={{
-                        marginLeft: "auto",
-                        marginRight: "auto",
-                        marginTop: "4rem",
-                        width: "10rem",
-                    }}
-                >
-                    {loading ? "Laden..." : "Speel! 🎮"}
-                </Button>
-            </Box>
+                {/* Settings Grid */}
+                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                    {/* Preview Duration */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 animate-scale-in">
+                        <label className="block text-lg font-semibold mb-4 dark:text-white">
+                            Preview Duur: {previewDuration}s
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">10s</span>
+                            <input
+                                type="range"
+                                min="10"
+                                max="30"
+                                step="5"
+                                value={previewDuration}
+                                onChange={(e) => setPreviewDuration(Number(e.target.value))}
+                                className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                aria-label="Preview duration slider"
+                            />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">30s</span>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                            {PREVIEW_DURATIONS.map(duration => (
+                                <button
+                                    key={duration}
+                                    onClick={() => setPreviewDuration(duration)}
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                                        previewDuration === duration
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {duration}s
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
-            {/* Multiplayer Mode */}
-            <Box display="flex" justifyContent="center" alignItems="center" marginTop="2rem">
-                <div style={{ textAlign: "center", width: "100%" }}>
-                    <div style={{
-                        padding: "1rem",
-                        backgroundColor: "#f3f4f6",
-                        borderRadius: "8px",
-                        marginBottom: "1rem"
-                    }}>
-                        <h3 style={{ margin: "0 0 0.5rem 0" }}>🎮 Multiplayer Mode</h3>
-                        <p style={{ margin: 0, fontSize: "0.9rem", color: "#666" }}>
+                    {/* Number of Songs */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 animate-scale-in">
+                        <label className="block text-lg font-semibold mb-4 dark:text-white">
+                            Aantal Songs: {numSongs}
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">1</span>
+                            <input
+                                type="range"
+                                min="1"
+                                max="5"
+                                value={numSongs}
+                                onChange={(e) => {
+                                    const value = Number(e.target.value);
+                                    setNumSongs(value);
+                                    setConfig({ ...config, qtySongs: value });
+                                }}
+                                className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                aria-label="Number of songs slider"
+                            />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">5</span>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                            {[1, 2, 3, 4, 5].map(num => (
+                                <button
+                                    key={num}
+                                    onClick={() => {
+                                        setNumSongs(num);
+                                        setConfig({ ...config, qtySongs: num });
+                                    }}
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                                        numSongs === num
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Number of Artists */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 animate-scale-in md:col-span-2">
+                        <label className="block text-lg font-semibold mb-4 dark:text-white">
+                            Aantal Keuzes (Artists): {numArtists}
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">2</span>
+                            <input
+                                type="range"
+                                min="2"
+                                max="6"
+                                value={numArtists}
+                                onChange={(e) => {
+                                    const value = Number(e.target.value);
+                                    setNumArtists(value);
+                                    setConfig({ ...config, qtyArtists: value });
+                                }}
+                                className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                aria-label="Number of artists slider"
+                            />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">6</span>
+                        </div>
+                        <div className="flex gap-2 mt-4 flex-wrap justify-center">
+                            {[2, 3, 4, 5, 6].map(num => (
+                                <button
+                                    key={num}
+                                    onClick={() => {
+                                        setNumArtists(num);
+                                        setConfig({ ...config, qtyArtists: num });
+                                    }}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                                        numArtists === num
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Play Button */}
+                <div className="flex justify-center mb-8">
+                    <Link to="/guess" onClick={() => handlePlay()}>
+                        <button
+                            disabled={!selectedGenre || loading}
+                            className="btn-primary text-xl px-12 py-4 focus-visible-ring"
+                            aria-label="Start playing the game"
+                        >
+                            {loading ? "Laden..." : "Speel! 🎮"}
+                        </button>
+                    </Link>
+                </div>
+
+                {/* Multiplayer Section */}
+                <div className="bg-gradient-to-r from-purple-500 to-blue-600 rounded-3xl shadow-2xl p-8 text-white animate-scale-in">
+                    <div className="text-center">
+                        <h3 className="text-3xl font-bold mb-3">🎮 Multiplayer Mode</h3>
+                        <p className="text-lg mb-6 opacity-90">
                             Speel met vrienden! Real-time muziek raden met live scoreboard.
                         </p>
+                        <Link to="/multiplayer">
+                            <button
+                                className="bg-white text-purple-600 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus-visible-ring"
+                                aria-label="Go to multiplayer mode"
+                            >
+                                Multiplayer Starten 🎵
+                            </button>
+                        </Link>
                     </div>
-                    <Button
-                        component={Link}
-                        to="/multiplayer"
-                        variant="contained"
-                        style={{
-                            backgroundColor: "#8b5cf6",
-                            color: "white",
-                            width: "10rem",
-                            fontWeight: "bold"
-                        }}
-                    >
-                        Multiplayer 🎵
-                    </Button>
                 </div>
-            </Box>
+
+                {/* Info Section */}
+                <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+                    <h3 className="text-xl font-bold mb-4 dark:text-white">ℹ️ Hoe te spelen</h3>
+                    <ul className="space-y-2 text-gray-700 dark:text-gray-300">
+                        <li>🎵 Selecteer je favoriete genre</li>
+                        <li>⚙️ Configureer het aantal songs en keuzes</li>
+                        <li>🎧 Luister naar de preview(s)</li>
+                        <li>🎯 Raad de juiste artiest zo snel mogelijk!</li>
+                        <li>⚡ Sneller = meer punten en hogere streak bonus</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     );
 };

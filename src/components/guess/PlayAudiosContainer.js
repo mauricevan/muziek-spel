@@ -1,17 +1,11 @@
 import React, { useState } from "react";
 import PlayAudio from "./PlayAudio";
-import Box from "@material-ui/core/Box";
 
 const PlayAudiosContainer = ({ songs, previewDuration = 30 }) => {
     const [playing, setPlaying] = useState({ 0: false, 1: false, 2: false });
 
     return (
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          style={{gap: "1rem"}}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {songs.map((song, idx) => (
                 song && (
                     <PlayAudio
@@ -24,7 +18,7 @@ const PlayAudiosContainer = ({ songs, previewDuration = 30 }) => {
                     />
                 )
             ))}
-        </Box>
+        </div>
     );
 };
 
