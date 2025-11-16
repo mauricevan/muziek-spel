@@ -35,6 +35,11 @@ const MultiplayerLobby = () => {
     const [error, setError] = useState('');
     const [totalScore, setTotalScore] = useState(0);
     const [currentFact, setCurrentFact] = useState(0);
+    const [roomStatus, setRoomStatus] = useState({
+        hasActiveRoom: false,
+        playerCount: 0,
+        gameState: null
+    });
 
     useEffect(() => {
         // Check localStorage voor saved username
@@ -46,11 +51,17 @@ const MultiplayerLobby = () => {
         // Connect socket
         socketService.connect();
 
+        // Get initial room status
+        const socket = socketService.getSocket();
+        socket.emit('getRoomStatus');
+
         // Event listeners
         socketService.on('roomUpdate', handleRoomUpdate);
         socketService.on('gameStarted', handleGameStarted);
         socketService.on('newAdmin', handleNewAdmin);
         socketService.on('error', handleError);
+        socketService.on('roomStatus', handleRoomStatus);
+        socketService.on('roomStatusChanged', handleRoomStatus);
 
         // Rotate music facts every 5 seconds
         const factInterval = setInterval(() => {
@@ -62,6 +73,8 @@ const MultiplayerLobby = () => {
             socketService.removeAllListeners('gameStarted');
             socketService.removeAllListeners('newAdmin');
             socketService.removeAllListeners('error');
+            socketService.removeAllListeners('roomStatus');
+            socketService.removeAllListeners('roomStatusChanged');
             clearInterval(factInterval);
         };
     }, []);
@@ -86,6 +99,10 @@ const MultiplayerLobby = () => {
     const handleError = (data) => {
         setError(data.message);
         setTimeout(() => setError(''), 3000);
+    };
+
+    const handleRoomStatus = (status) => {
+        setRoomStatus(status);
     };
 
     const handleJoin = async () => {
@@ -158,6 +175,28 @@ const MultiplayerLobby = () => {
                         <p className="text-gray-600">Multiplayer Music Guessing Game</p>
                     </div>
 
+                    {/* Active Room Indicator */}
+                    {roomStatus.hasActiveRoom && (
+                        <div className="mb-6 bg-gradient-to-r from-green-100 to-emerald-100 border-l-4 border-green-500 p-4 rounded-lg animate-pulse">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="font-bold text-green-700 text-lg">
+                                    🎮 Actieve Game Gevonden!
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                                    <div className="w-2 h-2 bg-green-500 rounded-full absolute"></div>
+                                </div>
+                            </div>
+                            <p className="text-green-700 text-sm">
+                                {roomStatus.playerCount} {roomStatus.playerCount === 1 ? 'speler is' : 'spelers zijn'}
+                                {roomStatus.gameState === 'playing' ? ' nu aan het spelen' : ' in de lobby'}!
+                            </p>
+                            <p className="text-green-600 text-xs mt-2">
+                                👇 Voer je username in en join direct!
+                            </p>
+                        </div>
+                    )}
+
                     {error && (
                         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
                             {error}
@@ -182,14 +221,16 @@ const MultiplayerLobby = () => {
 
                         <button
                             onClick={handleJoin}
-                            className="btn-primary w-full"
+                            className={`btn-primary w-full ${roomStatus.hasActiveRoom ? 'animate-bounce' : ''}`}
                         >
-                            Join Game 🎮
+                            {roomStatus.hasActiveRoom ? '🚀 Join Game Nu!' : 'Join Game 🎮'}
                         </button>
                     </div>
 
                     <div className="mt-6 text-center text-sm text-gray-500">
-                        <p>👑 Eerste speler wordt automatisch admin</p>
+                        {!roomStatus.hasActiveRoom && (
+                            <p>👑 Eerste speler wordt automatisch admin</p>
+                        )}
                         <p className="mt-1">🎯 Raad de muziek zo snel mogelijk!</p>
                     </div>
                 </div>
