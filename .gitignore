@@ -14,6 +14,8 @@ package-lock.json
 
 # Temp files
 nul
+tatus --short
+"lve handleGuess hoisting issue and code cleanup"
 
 .idea/
 

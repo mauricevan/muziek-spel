@@ -1,133 +1,223 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useHistory } from "react-router-dom";
+import {
+  Box,
+  Typography,
+  LinearProgress,
+  Paper,
+  Fade,
+} from "@material-ui/core";
+import { makeStyles } from "@material-ui/core/styles";
 import PlayAudiosContainer from "./guess/PlayAudiosContainer";
 import GuessChoicesContainer from "./guess/GuessChoicesContainer";
 import Volume from "./guess/Volume";
+import LoadingSpinner from "./shared/LoadingSpinner";
 import { useScore } from "../contexts/ScoreContext";
-import { FaArrowLeft, FaMusic } from 'react-icons/fa';
+import { useGameLogic } from "../hooks/useGameLogic";
+import { Howler } from "howler";
 
-const Guess = ({ config, artists, songs, setGuess, correctGuess }) => {
-  const { startQuestion } = useScore();
-  const [isLoading, setIsLoading] = useState(true);
-  const darkMode = localStorage.getItem("darkMode") === "true";
+const useStyles = makeStyles((theme) => ({
+  root: {
+    width: "100%",
+    padding: theme.spacing(2),
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing(2),
+    padding: theme.spacing(2),
+    backgroundColor: theme.palette.background.paper,
+    borderRadius: theme.shape.borderRadius,
+  },
+  lives: {
+    color: "#ff5252",
+    fontWeight: "bold",
+  },
+  score: {
+    color: theme.palette.primary.main,
+    fontWeight: "bold",
+  },
+  feedbackOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    pointerEvents: "none",
+  },
+  timerBar: {
+    height: 10,
+    borderRadius: 5,
+    marginBottom: theme.spacing(2),
+  },
+}));
 
-  useEffect(() => {
-    // Apply dark mode
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+const Guess = ({ config }) => {
+  const classes = useStyles();
+  const history = useHistory();
+  const { startQuestion, answerQuestion, lives, score, round, gameOver } =
+    useScore();
+  const { getArtists, getSongs, loading, error } = useGameLogic();
 
-  useEffect(() => {
-    if (songs?.length === config.qtySongs) {
-      // Start timing when the question is fully loaded
-      startQuestion();
-      setIsLoading(false);
-    }
-  }, [songs, config.qtySongs]);
+  const [artists, setArtists] = useState([]);
+  const [songs, setSongs] = useState([]);
+  const [correctGuess, setCorrectGuess] = useState(null);
+  const [feedbackColor, setFeedbackColor] = useState(null);
 
-  // Skeleton Loader Component
-  const SkeletonLoader = () => (
-    <div className="animate-fade-in">
-      <div className="max-w-4xl mx-auto">
-        {/* Header Skeleton */}
-        <div className="shimmer h-12 rounded-lg mb-8 w-3/4 mx-auto" />
+  // Timer State
+  const [timeLeft, setTimeLeft] = useState(30);
+  const timerRef = useRef(null);
 
-        {/* Audio Players Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="shimmer h-32 rounded-xl" />
-          ))}
-        </div>
+  const loadNewQuestion = useCallback(async () => {
+    Howler.stop();
+    setSongs([]);
+    setTimeLeft(30); // Reset timer
 
-        {/* Volume Skeleton */}
-        <div className="shimmer h-16 rounded-lg mb-8 w-1/2 mx-auto" />
+    const artistsData = await getArtists(
+      config.selectedGenre,
+      config.qtyArtists
+    );
+    if (!artistsData) return;
 
-        {/* Choices Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="shimmer h-20 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    </div>
+    const { _artists, _correctIdx } = artistsData;
+    setArtists(_artists);
+    setCorrectGuess(_artists[_correctIdx].name);
+
+    const _songs = await getSongs(_artists, _correctIdx, config.qtySongs);
+    setSongs(_songs);
+  }, [
+    config.selectedGenre,
+    config.qtyArtists,
+    config.qtySongs,
+    getArtists,
+    getSongs,
+  ]);
+
+  const handleGuess = useCallback(
+    async (artistName) => {
+      if (timerRef.current) clearInterval(timerRef.current);
+
+      const isCorrect = artistName === correctGuess;
+
+      setFeedbackColor(
+        isCorrect ? "rgba(0, 255, 0, 0.3)" : "rgba(255, 0, 0, 0.3)"
+      );
+      setTimeout(() => setFeedbackColor(null), 500);
+
+      answerQuestion(isCorrect);
+
+      if (isCorrect || lives > 1) {
+        setTimeout(() => {
+          loadNewQuestion();
+        }, 1000);
+      }
+    },
+    [correctGuess, answerQuestion, lives, loadNewQuestion]
   );
 
+  useEffect(() => {
+    loadNewQuestion();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      Howler.stop();
+    };
+  }, [loadNewQuestion]);
+
+  useEffect(() => {
+    if (songs && songs.length === config.qtySongs) {
+      startQuestion();
+
+      // Start Timer
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            handleGuess(null); // Time's up!
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [songs, handleGuess, startQuestion, config.qtySongs]);
+
+  useEffect(() => {
+    if (gameOver) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      history.push("/results");
+    }
+  }, [gameOver, history]);
+
+  if (loading || !songs || songs.length !== config.qtySongs) {
+    return (
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        height="50vh"
+      >
+        <LoadingSpinner />
+        <Typography variant="h6" style={{ marginTop: "1rem" }}>
+          Ronde {round} wordt geladen...
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 p-4 sm:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Back Button */}
-        <div className="mb-6 animate-slide-down">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 focus-visible-ring"
-            aria-label="Terug naar home"
-          >
-            <FaArrowLeft />
-            <span className="font-semibold">Terug naar Home</span>
-          </Link>
-        </div>
+    <div className={classes.root}>
+      <Fade in={!!feedbackColor} timeout={200}>
+        <div
+          className={classes.feedbackOverlay}
+          style={{ backgroundColor: feedbackColor }}
+        />
+      </Fade>
 
-        {isLoading ? (
-          <SkeletonLoader />
-        ) : (
-          <div className="animate-scale-in">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-                <span className="text-gradient">Welke artiest is dit?</span> 🎵
-              </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                Luister goed en kies het juiste antwoord!
-              </p>
-            </div>
+      <Paper className={classes.header} elevation={3}>
+        <Typography className={classes.lives}>
+          Lives: {"❤️".repeat(lives)}
+        </Typography>
+        <Typography variant="h6">Ronde {round}</Typography>
+        <Typography className={classes.score}>Score: {score}</Typography>
+      </Paper>
 
-            {/* Audio Players Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 sm:p-8 mb-8">
-              <div className="flex items-center justify-center gap-2 mb-6">
-                <FaMusic className="text-blue-500 text-2xl animate-pulse" />
-                <h2 className="text-2xl font-bold dark:text-white">Muziek Previews</h2>
-              </div>
-              <PlayAudiosContainer
-                songs={songs}
-                previewDuration={config.previewDuration || 30}
-              />
-            </div>
+      <LinearProgress
+        variant="determinate"
+        value={(timeLeft / 30) * 100}
+        className={classes.timerBar}
+        color={timeLeft < 10 ? "secondary" : "primary"}
+      />
 
-            {/* Volume Control */}
-            {songs && (
-              <div className="flex justify-center mb-8">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
-                  <Volume />
-                </div>
-              </div>
-            )}
+      <h1 style={{ textAlign: "center", marginBottom: "2rem" }}>
+        Welke artiest is dit? 🎵
+      </h1>
 
-            {/* Artist Choices */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 sm:p-8">
-              <h2 className="text-2xl font-bold mb-6 text-center dark:text-white">
-                Kies de juiste artiest
-              </h2>
-              {artists && (
-                <GuessChoicesContainer
-                  artists={artists}
-                  setGuess={setGuess}
-                  correctGuess={correctGuess}
-                />
-              )}
-            </div>
+      <Box display="flex" justifyContent="center" alignItems="center">
+        <PlayAudiosContainer
+          songs={songs}
+          previewDuration={config.previewDuration || 30}
+        />
+      </Box>
 
-            {/* Tips */}
-            <div className="mt-8 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800">
-              <p className="text-center text-gray-700 dark:text-gray-300">
-                <strong>💡 Tip:</strong> Sneller raden = meer punten! ⚡
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        style={{ margin: "2rem" }}
+      >
+        <Volume />
+      </Box>
+
+      <Box display="flex" justifyContent="center" alignItems="center">
+        <GuessChoicesContainer
+          artists={artists}
+          onGuess={handleGuess}
+          correctGuess={correctGuess}
+        />
+      </Box>
     </div>
   );
 };

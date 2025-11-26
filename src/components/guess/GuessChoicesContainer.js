@@ -1,21 +1,27 @@
 import React from "react";
 import GuessChoice from "./GuessChoice";
+import Box from "@material-ui/core/Box";
 
 //used in guess and result
-const GuessChoicesContainer = ({artists, setGuess, correctGuess}) => {
+const GuessChoicesContainer = ({artists, onGuess}) => {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          flexDirection="column"
+          style={{gap: "1rem"}}
+        >
           {artists.map((artist, index) => (
             artist && (
               <GuessChoice
                 key={index}
                 artist={artist.name}
-                setGuess={setGuess}
-                correctGuess={correctGuess}
+                onGuess={onGuess}
               />
             )
           ))}
-        </div>
+        </Box>
     );
 };
 

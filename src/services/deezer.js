@@ -1,10 +1,7 @@
 // Deezer API Service for getting track previews
 // Uses backend proxy to avoid CORS issues
-// Note: API route is /api/music instead of /api/deezer to prevent ad blocker issues
 
-const PROXY_BASE = process.env.NODE_ENV === 'production'
-    ? '/api/music'
-    : 'http://localhost:3001/api/music';
+const PROXY_BASE = 'http://localhost:3001/api/deezer';
 
 /**
  * Search for a track on Deezer via backend proxy
@@ -126,33 +123,10 @@ export const getTrackPreviews = async (tracks) => {
     return previews;
 };
 
-/**
- * Get multiple tracks for a category (voor multiple choice)
- */
-export const getMultipleTracks = async (category, count = 6) => {
-    try {
-        const response = await fetch(
-            `${PROXY_BASE}/multiple?q=${encodeURIComponent(category)}&count=${count}`
-        );
-
-        const data = await response.json();
-
-        if (data.data && data.data.length > 0) {
-            return data.data;
-        }
-
-        return [];
-    } catch (error) {
-        console.error('Error getting multiple tracks:', error);
-        return [];
-    }
-};
-
 export default {
     searchTrack,
     searchArtist,
     getArtistTopTracks,
     getTrackPreview,
-    getTrackPreviews,
-    getMultipleTracks
+    getTrackPreviews
 };

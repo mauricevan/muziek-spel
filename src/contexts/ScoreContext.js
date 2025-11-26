@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const ScoreContext = createContext();
 
@@ -17,21 +17,29 @@ export const ScoreProvider = ({ children }) => {
     const [correctAnswers, setCorrectAnswers] = useState(0);
     const [responseTime, setResponseTime] = useState(null);
     const [questionStartTime, setQuestionStartTime] = useState(null);
+    
+    // Arcade Mode State
+    const [lives, setLives] = useState(3);
+    const [round, setRound] = useState(1);
+    const [gameOver, setGameOver] = useState(false);
 
     // Calculate score based on speed and streak
     const calculateScore = (isCorrect, timeInSeconds) => {
         if (!isCorrect) {
             setStreak(0);
+            setLives(prev => {
+                const newLives = prev - 1;
+                if (newLives <= 0) {
+                    setGameOver(true);
+                }
+                return newLives;
+            });
             return 0;
         }
 
         let points = 100; // Base points for correct answer
 
         // Speed bonus (max 50 points)
-        // < 5 seconds: +50 points
-        // < 10 seconds: +30 points
-        // < 15 seconds: +20 points
-        // < 20 seconds: +10 points
         if (timeInSeconds < 5) {
             points += 50;
         } else if (timeInSeconds < 10) {
@@ -50,6 +58,7 @@ export const ScoreProvider = ({ children }) => {
         setStreak(newStreak);
         setCorrectAnswers(prev => prev + 1);
         setScore(prev => prev + points);
+        setRound(prev => prev + 1);
 
         return points;
     };
@@ -73,13 +82,16 @@ export const ScoreProvider = ({ children }) => {
         return { points, timeInSeconds };
     };
 
-    const resetScore = () => {
+    const resetGame = () => {
         setScore(0);
         setStreak(0);
         setTotalQuestions(0);
         setCorrectAnswers(0);
         setResponseTime(null);
         setQuestionStartTime(null);
+        setLives(3);
+        setRound(1);
+        setGameOver(false);
     };
 
     // Save high score to localStorage
@@ -91,7 +103,8 @@ export const ScoreProvider = ({ children }) => {
             accuracy: totalQuestions > 0 ? (correctAnswers / totalQuestions * 100).toFixed(1) : 0,
             date: new Date().toISOString(),
             totalQuestions: totalQuestions,
-            correctAnswers: correctAnswers
+            correctAnswers: correctAnswers,
+            rounds: round
         };
 
         highScores.push(newScore);
@@ -111,9 +124,12 @@ export const ScoreProvider = ({ children }) => {
         totalQuestions,
         correctAnswers,
         responseTime,
+        lives,
+        round,
+        gameOver,
         startQuestion,
         answerQuestion,
-        resetScore,
+        resetGame,
         saveHighScore,
         getHighScores
     };

@@ -1,0 +1,448 @@
+[1mdiff --git a/src/components/App.js b/src/components/App.js[m
+[1mindex e32d0d7..22d5d8a 100644[m
+[1m--- a/src/components/App.js[m
+[1m+++ b/src/components/App.js[m
+[36m@@ -1,5 +1,6 @@[m
+ import React, { useState } from "react";[m
+ import Container from "@material-ui/core/Container";[m
+[32m+[m[32mimport CssBaseline from "@material-ui/core/CssBaseline";[m
+ [m
+ import { Route, Switch, Redirect } from "react-router-dom";[m
+ import Guess from "./Guess";[m
+[36m@@ -11,54 +12,72 @@[m [mimport { ScoreProvider } from "../contexts/ScoreContext";[m
+ [m
+ const theme = createTheme({[m
+     palette: {[m
+[32m+[m[32m        type: 'dark',[m
+         primary: {[m
+[31m-            light: "#000",[m
+[31m-            main: "#63adf2",[m
+[31m-            dark: "#3B6FC8",[m
+[31m-            contrastText: "#fff",[m
+[32m+[m[32m            main: '#1DB954', // Spotify Green[m
+[32m+[m[32m            contrastText: '#fff',[m
+         },[m
+         secondary: {[m
+[31m-            light: "#000",[m
+[31m-            main: "#3f51b5",[m
+[31m-            dark: "#002884",[m
+[31m-            contrastText: "#fff",[m
+[32m+[m[32m            main: '#191414', // Spotify Black[m
+[32m+[m[32m            contrastText: '#fff',[m
+         },[m
+[31m-        warning: {[m
+[31m-            light: "#000",[m
+[31m-            main: "#8b1e3f",[m
+[31m-            dark: "#002884",[m
+[31m-            contrastText: "#fff",[m
+[32m+[m[32m        background: {[m
+[32m+[m[32m            default: '#121212',[m
+[32m+[m[32m            paper: '#181818',[m
+[32m+[m[32m        },[m
+[32m+[m[32m        text: {[m
+[32m+[m[32m            primary: '#fff',[m
+[32m+[m[32m            secondary: '#b3b3b3',[m
+[32m+[m[32m        },[m
+[32m+[m[32m    },[m
+[32m+[m[32m    typography: {[m
+[32m+[m[32m        fontFamily: '"Circular Std", "Helvetica Neue", Helvetica, Arial, sans-serif',[m
+[32m+[m[32m        h1: {[m
+[32m+[m[32m            fontWeight: 700,[m
+[32m+[m[32m            fontSize: '2.5rem',[m
+[32m+[m[32m        },[m
+[32m+[m[32m        h2: {[m
+[32m+[m[32m            fontWeight: 700,[m
+[32m+[m[32m        },[m
+[32m+[m[32m        button: {[m
+[32m+[m[32m            fontWeight: 700,[m
+[32m+[m[32m            textTransform: 'none',[m
+[32m+[m[32m            borderRadius: 500,[m
+[32m+[m[32m        },[m
+[32m+[m[32m    },[m
+[32m+[m[32m    overrides: {[m
+[32m+[m[32m        MuiButton: {[m
+[32m+[m[32m            root: {[m
+[32m+[m[32m                borderRadius: 500, // Pill shape[m
+[32m+[m[32m                padding: '12px 32px',[m
+[32m+[m[32m            },[m
+[32m+[m[32m            containedPrimary: {[m
+[32m+[m[32m                '&:hover': {[m
+[32m+[m[32m                    backgroundColor: '#1ed760',[m
+[32m+[m[32m                },[m
+[32m+[m[32m            },[m
+[32m+[m[32m        },[m
+[32m+[m[32m        MuiPaper: {[m
+[32m+[m[32m            rounded: {[m
+[32m+[m[32m                borderRadius: 16,[m
+[32m+[m[32m            },[m
+         },[m
+     },[m
+ });[m
+ [m
+ const App = () => {[m
+[31m-    const [redirectFlag, setRedirectFlag] = useState(true);[m
+[31m-    const [artists, setArtists] = useState([]);[m
+[31m-    const [correctGuess, setCorrectGuess] = useState();[m
+[31m-    const [guess, setGuess] = useState();[m
+[31m-    const [songs, setSongs] = useState();[m
+     const [config, setConfig] = useState({[m
+         selectedGenre: localStorage.getItem("selectedGenre"),[m
+         qtySongs: Number(localStorage.getItem("qtySongs")) || 1,[m
+         qtyArtists: Number(localStorage.getItem("qtyArtists")) || 2,[m
+[32m+[m[32m        previewDuration: Number(localStorage.getItem("previewDuration")) || 30,[m
+     });[m
+ [m
+[31m-    const homeProps = {[m
+[31m-        config,[m
+[31m-        setConfig,[m
+[31m-        setArtists,[m
+[31m-        setSongs,[m
+[31m-        setCorrectGuess,[m
+[31m-        setRedirectFlag,[m
+[31m-    };[m
+[31m-    const guessProps = { config, artists, songs, setGuess, correctGuess };[m
+[31m-    const resultProps = { artists, correctGuess, guess };[m
+[31m-[m
+     return ([m
+         <ScoreProvider>[m
+             <div style={{ display: "flex", height: "100%" }}>[m
+                 <ThemeProvider theme={theme}>[m
+[32m+[m[32m                    <CssBaseline />[m
+                     <Container[m
+                         maxWidth="sm"[m
+                         style={{ marginTop: "auto", marginBottom: "auto" }}[m
+[36m@@ -68,21 +87,13 @@[m [mconst App = () => {[m
+                                 <Callback />[m
+                             </Route>[m
+                             <Route exact path="/guess">[m
+[31m-                                {redirectFlag ? ([m
+[31m-                                    <Redirect to="/" />[m
+[31m-                                ) : ([m
+[31m-                                    <Guess {...guessProps} />[m
+[31m-                                )}[m
+[32m+[m[32m                                <Guess config={config} />[m
+                             </Route>[m
+                             <Route exact path="/results">[m
+[31m-                                {redirectFlag ? ([m
+[31m-                                    <Redirect to="/" />[m
+[31m-                                ) : ([m
+[31m-                                    <Results {...resultProps} />[m
+[31m-                                )}[m
+[32m+[m[32m                                <Results />[m
+                             </Route>[m
+                             <Route path="/">[m
+[31m-                                <Home {...homeProps} />[m
+[32m+[m[32m                                <Home config={config} setConfig={setConfig} />[m
+                             </Route>[m
+                         </Switch>[m
+                     </Container>[m
+[1mdiff --git a/src/components/Guess.js b/src/components/Guess.js[m
+[1mindex cc135b8..d8cf220 100644[m
+[1m--- a/src/components/Guess.js[m
+[1m+++ b/src/components/Guess.js[m
+[36m@@ -1,56 +1,197 @@[m
+[31m-import React, { useEffect } from "react";[m
+[31m-import Box from "@material-ui/core/Box";[m
+[32m+[m[32mimport React, { useEffect, useState, useRef } from "react";[m
+[32m+[m[32mimport { useHistory } from "react-router-dom";[m
+[32m+[m[32mimport { Box, Typography, LinearProgress, Paper, Fade } from "@material-ui/core";[m
+[32m+[m[32mimport { makeStyles } from "@material-ui/core/styles";[m
+ import PlayAudiosContainer from "./guess/PlayAudiosContainer";[m
+ import GuessChoicesContainer from "./guess/GuessChoicesContainer";[m
+ import Volume from "./guess/Volume";[m
+ import LoadingSpinner from "./shared/LoadingSpinner";[m
+ import { useScore } from "../contexts/ScoreContext";[m
+[32m+[m[32mimport { useGameLogic } from "../hooks/useGameLogic";[m
+[32m+[m[32mimport { Howler } from "howler";[m
+ [m
+[31m-const Guess = ({ config, artists, songs, setGuess, correctGuess }) => {[m
+[31m-  const { startQuestion } = useScore();[m
+[32m+[m[32mconst useStyles = makeStyles((theme) => ({[m
+[32m+[m[32m    root: {[m
+[32m+[m[32m        width: '100%',[m
+[32m+[m[32m        padding: theme.spacing(2),[m
+[32m+[m[32m    },[m
+[32m+[m[32m    header: {[m
+[32m+[m[32m        display: 'flex',[m
+[32m+[m[32m        justifyContent: 'space-between',[m
+[32m+[m[32m        marginBottom: theme.spacing(2),[m
+[32m+[m[32m        padding: theme.spacing(2),[m
+[32m+[m[32m        backgroundColor: theme.palette.background.paper,[m
+[32m+[m[32m        borderRadius: theme.shape.borderRadius,[m
+[32m+[m[32m    },[m
+[32m+[m[32m    lives: {[m
+[32m+[m[32m        color: '#ff5252',[m
+[32m+[m[32m        fontWeight: 'bold',[m
+[32m+[m[32m    },[m
+[32m+[m[32m    score: {[m
+[32m+[m[32m        color: theme.palette.primary.main,[m
+[32m+[m[32m        fontWeight: 'bold',[m
+[32m+[m[32m    },[m
+[32m+[m[32m    feedbackOverlay: {[m
+[32m+[m[32m        position: 'fixed',[m
+[32m+[m[32m        top: 0,[m
+[32m+[m[32m        left: 0,[m
+[32m+[m[32m        right: 0,[m
+[32m+[m[32m        bottom: 0,[m
+[32m+[m[32m        zIndex: 9999,[m
+[32m+[m[32m        pointerEvents: 'none',[m
+[32m+[m[32m    },[m
+[32m+[m[32m    timerBar: {[m
+[32m+[m[32m        height: 10,[m
+[32m+[m[32m        borderRadius: 5,[m
+[32m+[m[32m        marginBottom: theme.spacing(2),[m
+[32m+[m[32m    }[m
+[32m+[m[32m}));[m
+[32m+[m
+[32m+[m[32mconst Guess = ({ config }) => {[m
+[32m+[m[32m    const classes = useStyles();[m
+[32m+[m[32m    const history = useHistory();[m
+[32m+[m[32m    const { startQuestion, answerQuestion, lives, score, round, gameOver } = useScore();[m
+[32m+[m[32m    const { getArtists, getSongs, loading, error } = useGameLogic();[m
+[32m+[m
+[32m+[m[32m    const [artists, setArtists] = useState([]);[m
+[32m+[m[32m    const [songs, setSongs] = useState([]);[m
+[32m+[m[32m    const [correctGuess, setCorrectGuess] = useState(null);[m
+[32m+[m[32m    const [feedbackColor, setFeedbackColor] = useState(null);[m
+[32m+[m[41m    [m
+[32m+[m[32m    // Timer State[m
+[32m+[m[32m    const [timeLeft, setTimeLeft] = useState(30);[m
+[32m+[m[32m    const timerRef = useRef(null);[m
+[32m+[m
+[32m+[m[32m    const loadNewQuestion = async () => {[m
+[32m+[m[32m        Howler.stop();[m
+[32m+[m[32m        setSongs([]);[m[41m [m
+[32m+[m[32m        setTimeLeft(30); // Reset timer[m
+[32m+[m[41m        [m
+[32m+[m[32m        const artistsData = await getArtists(config.selectedGenre, config.qtyArtists);[m
+[32m+[m[32m        if (!artistsData) return;[m
+[32m+[m
+[32m+[m[32m        const { _artists, _correctIdx } = artistsData;[m
+[32m+[m[32m        setArtists(_artists);[m
+[32m+[m[32m        setCorrectGuess(_artists[_correctIdx].name);[m
+[32m+[m
+[32m+[m[32m        const _songs = await getSongs(_artists, _correctIdx, config.qtySongs);[m
+[32m+[m[32m        setSongs(_songs);[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    useEffect(() => {[m
+[32m+[m[32m        loadNewQuestion();[m
+[32m+[m[32m        return () => {[m
+[32m+[m[32m            if (timerRef.current) clearInterval(timerRef.current);[m
+[32m+[m[32m            Howler.stop();[m
+[32m+[m[32m        };[m
+[32m+[m[32m    }, []);[m
+[32m+[m
+[32m+[m[32m    useEffect(() => {[m
+[32m+[m[32m        if (songs && songs.length === config.qtySongs) {[m
+[32m+[m[32m            startQuestion();[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Start Timer[m
+[32m+[m[32m            if (timerRef.current) clearInterval(timerRef.current);[m
+[32m+[m[32m            timerRef.current = setInterval(() => {[m
+[32m+[m[32m                setTimeLeft(prev => {[m
+[32m+[m[32m                    if (prev <= 1) {[m
+[32m+[m[32m                        clearInterval(timerRef.current);[m
+[32m+[m[32m                        handleGuess(null); // Time's up![m
+[32m+[m[32m                        return 0;[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    return prev - 1;[m
+[32m+[m[32m                });[m
+[32m+[m[32m            }, 1000);[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }, [songs]);[m
+[32m+[m
+[32m+[m[32m    useEffect(() => {[m
+[32m+[m[32m        if (gameOver) {[m
+[32m+[m[32m            if (timerRef.current) clearInterval(timerRef.current);[m
+[32m+[m[32m            history.push("/results");[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }, [gameOver, history]);[m
+ [m
+[31m-  useEffect(() => {[m
+[31m-    if (songs?.length === config.qtySongs) {[m
+[31m-      // Start timing when the question is fully loaded[m
+[31m-      startQuestion();[m
+[32m+[m[32m    const handleGuess = async (artistName) => {[m
+[32m+[m[32m        if (timerRef.current) clearInterval(timerRef.current);[m
+[32m+[m
+[32m+[m[32m        const isCorrect = artistName === correctGuess;[m
+[32m+[m[41m        [m
+[32m+[m[32m        setFeedbackColor(isCorrect ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)');[m
+[32m+[m[32m        setTimeout(() => setFeedbackColor(null), 500);[m
+[32m+[m
+[32m+[m[32m        answerQuestion(isCorrect);[m
+[32m+[m
+[32m+[m[32m        if (isCorrect || lives > 1) {[m
+[32m+[m[32m            setTimeout(() => {[m
+[32m+[m[32m                loadNewQuestion();[m
+[32m+[m[32m            }, 1000);[m
+[32m+[m[32m        }[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    if (loading || !songs || songs.length !== config.qtySongs) {[m
+[32m+[m[32m        return ([m
+[32m+[m[32m            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" height="50vh">[m
+[32m+[m[32m                <LoadingSpinner />[m
+[32m+[m[32m                <Typography variant="h6" style={{ marginTop: '1rem' }}>[m
+[32m+[m[32m                    Ronde {round} wordt geladen...[m
+[32m+[m[32m                </Typography>[m
+[32m+[m[32m            </Box>[m
+[32m+[m[32m        );[m
+     }[m
+[31m-  }, [songs, config.qtySongs]);[m
+[31m-[m
+[31m-  return ([m
+[31m-    <div>[m
+[31m-      {songs?.length !== config.qtySongs &&([m
+[31m-        <LoadingSpinner />[m
+[31m-      )}[m
+[31m-      {songs?.length === config.qtySongs && ([m
+[31m-        <>[m
+[31m-          <h1 style={{ textAlign: "center" }}>Welke artiest is dit? 🎵</h1>[m
+[31m-          <Box display="flex" justifyContent="center" alignItems="center">[m
+[31m-            <PlayAudiosContainer[m
+[31m-              songs={songs}[m
+[31m-              previewDuration={config.previewDuration || 30}[m
+[32m+[m
+[32m+[m[32m    return ([m
+[32m+[m[32m        <div className={classes.root}>[m
+[32m+[m[32m            <Fade in={!!feedbackColor} timeout={200}>[m
+[32m+[m[32m                <div className={classes.feedbackOverlay} style={{ backgroundColor: feedbackColor }} />[m
+[32m+[m[32m            </Fade>[m
+[32m+[m
+[32m+[m[32m            <Paper className={classes.header} elevation={3}>[m
+[32m+[m[32m                <Typography className={classes.lives}>[m
+[32m+[m[32m                    Lives: {"❤️".repeat(lives)}[m
+[32m+[m[32m                </Typography>[m
+[32m+[m[32m                <Typography variant="h6">[m
+[32m+[m[32m                    Ronde {round}[m
+[32m+[m[32m                </Typography>[m
+[32m+[m[32m                <Typography className={classes.score}>[m
+[32m+[m[32m                    Score: {score}[m
+[32m+[m[32m                </Typography>[m
+[32m+[m[32m            </Paper>[m
+[32m+[m
+[32m+[m[32m            <LinearProgress[m[41m [m
+[32m+[m[32m                variant="determinate"[m[41m [m
+[32m+[m[32m                value={(timeLeft / 30) * 100}[m[41m [m
+[32m+[m[32m                className={classes.timerBar}[m
+[32m+[m[32m                color={timeLeft < 10 ? "secondary" : "primary"}[m
+             />[m
+[31m-          </Box>[m
+[31m-          <Box[m
+[31m-            display="flex"[m
+[31m-            justifyContent="center"[m
+[31m-            alignItems="center"[m
+[31m-            style={{ margin: "2rem" }}[m
+[31m-          >[m
+[31m-            {songs && <Volume />}[m
+[31m-          </Box>[m
+[31m-          <Box display="flex" justifyContent="center" alignItems="center">[m
+[31m-            {artists && ([m
+[31m-              <GuessChoicesContainer[m
+[31m-                artists={artists}[m
+[31m-                setGuess={setGuess}[m
+[31m-                correctGuess={correctGuess}[m
+[31m-              />[m
+[31m-            )}[m
+[31m-          </Box>[m
+[31m-        </>[m
+[31m-      )}[m
+[31m-    </div>[m
+[31m-  );[m
+[32m+[m
+[32m+[m[32m            <h1 style={{ textAlign: "center", marginBottom: '2rem' }}>Welke artiest is dit? 🎵</h1>[m
+[32m+[m[41m            [m
+[32m+[m[32m            <Box display="flex" justifyContent="center" alignItems="center">[m
+[32m+[m[32m                <PlayAudiosContainer[m
+[32m+[m[32m                    songs={songs}[m
+[32m+[m[32m                    previewDuration={config.previewDuration || 30}[m
+[32m+[m[32m                />[m
+[32m+[m[32m            </Box>[m
+[32m+[m[41m            [m
+[32m+[m[32m            <Box[m
+[32m+[m[32m                display="flex"[m
+[32m+[m[32m                justifyContent="center"[m
+[32m+[m[32m                alignItems="center"[m
+[32m+[m[32m                style={{ margin: "2rem" }}[m
+[32m+[m[32m            >[m
+[32m+[m[32m                <Volume />[m
+[32m+[m[32m            </Box>[m
+[32m+[m
+[32m+[m[32m            <Box display="flex" justifyContent="center" alignItems="center">[m
+[32m+[m[32m                <GuessChoicesContainer[m
+[32m+[m[32m                    artists={artists}[m
+[32m+[m[32m                    onGuess={handleGuess}[m
+[32m+[m[32m                    correctGuess={correctGuess}[m
+[32m+[m[32m                />[m
+[32m+[m[32m            </Box>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m    );[m
+ };[m
+ [m
+ export default Guess;[m
+[1mdiff --git a/src/components/Home.js b/src/components/Home.js[m
+[1mindex a615ef2..f1e2c9e 100644[m
+[1m--- a/src/components/Home.js[m
+[1m+++ b/src/components/Home.js[m
+[36m@@ -1,272 +1,157 @@[m
+[31m-import React, { useEffect, useState } from "react";[m
+[31m-[m
+[31m-import Button from "@material-ui/core/Button";[m
+[31m-import Box from "@material-ui/core/Box";[m
+[32m+[m[32mimport React, { useState } from "react";[m
+[32m+[m[32mimport { Link, useHistory } from "react-router-dom";[m
+ import { makeStyles } from "@material-ui/core/styles";[m
+[31m-import FormControl from "@material-ui/core/FormControl";[m
+[31m-import InputLabel from "@material-ui/core/InputLabel";[m
+[31m-import MenuItem from "@material-ui/core/MenuItem";[m
+[31m-import Select from "@material-ui/core/Select";[m
+[31m-import TextField from "@material-ui/core/TextField";[m
+[31m-import Radio from "@material-ui/core/Radio";[m
+[31m-import RadioGroup from "@material-ui/core/RadioGroup";[m
+[31m-import FormControlLabel from "@material-ui/core/FormControlLabel";[m
+[31m-import FormLabel from "@material-ui/core/FormLabel";[m
+[31m-[m
+[31m-import { Link } from "react-router-dom";[m
+[31m-import { getArtistsByGenre, getAlbumsByArtist, getTracksByAlbum } from "../services/audiodb";[m
+[31m-import { getTrackPreviews } from "../services/deezer";[m
+[31m-import ConfigChoicesContainer from "./home/ConfigChoicesContainer";[m
+[31m-import LoadingSpinner from "./shared/LoadingSpinner";[m
+[31m-import { PRESET_PLAYLISTS, PREVIEW_DURATIONS } from "../constants/playlists";[m
+[32m+[m[32mimport {[m
+[32m+[m[32m    Box,[m
+[32m+[m[32m    Button,[m
+[32m+[m[32m    Container,[m
+[32m+[m[32m    Typography,[m
+[32m+[m[32m    Grid,[m
+[32m+[m[32m    Paper,[m
+[32m+[m[32m    FormControl,[m
+[32m+[m[32m    InputLabel,[m
+[32m+[m[32m    Select,[m
+[32m+[m[32m    MenuItem,[m
+[32m+[m[32m    Slider[m
+[32m+[m[32m} from "@material-ui/core";[m
+[32m+[m[32mimport { MusicNote, Timer, Album, People } from "@material-ui/icons";[m
+[32m+[m[32mimport { useScore } from "../contexts/ScoreContext";[m
+ [m
+ const useStyles = makeStyles((theme) => ({[m
+[32m+[m[32m    root: {[m
+[32m+[m[32m        minHeight: "100vh",[m
+[32m+[m[32m        display: "flex",[m
+[32m+[m[32m        flexDirection: "column",[m
+[32m+[m[32m        justifyContent: "center",[m
+[32m+[m[32m        padding: theme.spacing(4),[m
+[32m+[m[32m    },[m
+[32m+[m[32m    paper: {[m
+[32m+[m[32m        padding: theme.spacing(4),[m
+[32m+[m[32m        backgroundColor: theme.palette.background.paper,[m
+[32m+[m[32m        borderRadius: theme.shape.borderRadius * 2,[m
+[32m+[m[32m        boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",[m
+[32m+[m[32m    },[m
+[32m+[m[32m    title: {[m
+[32m+[m[32m        marginBottom: theme.spacing(4),[m
+[32m+[m[32m        fontWeight: 800,[m
+[32m+[m[32m        background: "linear-gradient(45deg, #1DB954 30%, #1ED760 90%)",[m
+[32m+[m[32m        WebkitBackgroundClip: "text",[m
+[32m+[m[32m        WebkitTe
