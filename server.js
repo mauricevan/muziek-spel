@@ -4,13 +4,17 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const path = require('path');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Enable CORS voor frontend
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from dist folder
+app.use(express.static(path.join(__dirname, 'dist')));
 
 const DEEZER_API_BASE = 'https://api.deezer.com';
 
@@ -90,6 +94,11 @@ app.get('/api/deezer/artist/:id/top', async (req, res) => {
  */
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'Deezer proxy server is running' });
+});
+
+// Catch-all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(PORT, () => {
