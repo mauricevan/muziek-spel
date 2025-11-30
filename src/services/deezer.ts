@@ -1,13 +1,19 @@
 // Deezer API Service for getting track previews
 // Uses backend proxy to avoid CORS issues
 
+import type { DeezerTrack, DeezerArtist, AudioDBTrack } from '../types/api.types';
+
 // Use relative URL to work in both development and production
 const PROXY_BASE = '/api/deezer';
+
+interface TrackWithPreview extends AudioDBTrack {
+  preview_url: string | null;
+}
 
 /**
  * Search for a track on Deezer via backend proxy
  */
-export const searchTrack = async (trackName, artistName) => {
+export const searchTrack = async (trackName: string, artistName: string): Promise<DeezerTrack | null> => {
     try {
         const query = `${artistName} ${trackName}`;
         const response = await fetch(
@@ -17,7 +23,7 @@ export const searchTrack = async (trackName, artistName) => {
         const data = await response.json();
 
         if (data.data && data.data.length > 0) {
-            return data.data[0];
+            return data.data[0] as DeezerTrack;
         }
 
         return null;
@@ -30,7 +36,7 @@ export const searchTrack = async (trackName, artistName) => {
 /**
  * Search for artist on Deezer via backend proxy
  */
-export const searchArtist = async (artistName) => {
+export const searchArtist = async (artistName: string): Promise<DeezerArtist | null> => {
     try {
         const response = await fetch(
             `${PROXY_BASE}/artist/search?q=${encodeURIComponent(artistName)}`
@@ -39,7 +45,7 @@ export const searchArtist = async (artistName) => {
         const data = await response.json();
 
         if (data.data && data.data.length > 0) {
-            return data.data[0];
+            return data.data[0] as DeezerArtist;
         }
 
         return null;
@@ -52,7 +58,7 @@ export const searchArtist = async (artistName) => {
 /**
  * Get top tracks for an artist via backend proxy
  */
-export const getArtistTopTracks = async (artistId) => {
+export const getArtistTopTracks = async (artistId: number): Promise<DeezerTrack[]> => {
     try {
         const response = await fetch(
             `${PROXY_BASE}/artist/${artistId}/top`
@@ -61,7 +67,7 @@ export const getArtistTopTracks = async (artistId) => {
         const data = await response.json();
 
         if (data.data && data.data.length > 0) {
-            return data.data;
+            return data.data as DeezerTrack[];
         }
 
         return [];
@@ -74,7 +80,7 @@ export const getArtistTopTracks = async (artistId) => {
 /**
  * Get track preview URL from Deezer
  */
-export const getTrackPreview = async (trackName, artistName) => {
+export const getTrackPreview = async (trackName: string, artistName: string): Promise<string | null> => {
     try {
         const track = await searchTrack(trackName, artistName);
 
@@ -93,11 +99,11 @@ export const getTrackPreview = async (trackName, artistName) => {
  * Get preview URLs for multiple tracks
  * This is the main function used by Home.js
  */
-export const getTrackPreviews = async (tracks) => {
+export const getTrackPreviews = async (tracks: AudioDBTrack[]): Promise<TrackWithPreview[]> => {
     console.log('Getting Deezer previews for tracks:', tracks);
 
     const previews = await Promise.all(
-        tracks.map(async (track) => {
+        tracks.map(async (track): Promise<TrackWithPreview> => {
             try {
                 const previewUrl = await getTrackPreview(track.strTrack, track.strArtist);
 
@@ -131,3 +137,4 @@ export default {
     getTrackPreview,
     getTrackPreviews
 };
+
