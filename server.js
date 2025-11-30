@@ -248,8 +248,14 @@ app.get('/health', (req, res) => {
 });
 
 // Catch-all handler: send back React's index.html file for client-side routing
-app.get('/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// Use app.use() instead of app.get() to avoid path-to-regexp compatibility issues
+app.use((req, res, next) => {
+    // Only handle GET requests that aren't API routes
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/health')) {
+        res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    } else {
+        next();
+    }
 });
 
 server.listen(PORT, () => {
