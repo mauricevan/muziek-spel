@@ -42,11 +42,62 @@ Zie [SETUP.md](./SETUP.md) voor:
 
 ## 🛠️ Technologie
 
-- React 16 + Hooks
-- Material-UI v4
-- Howler.js (audio playback)
-- Spotify Web API
-- React Context (state management)
+- **React 16** + Hooks
+- **TypeScript** - Type safety and better developer experience
+- **Material-UI v4** - Component library
+- **Howler.js** - Audio playback
+- **Spotify Web API** - Music data
+- **React Context** - State management
+- **Vitest** - Unit and integration testing
+- **Playwright** - E2E testing
+- **Webpack** - Build tool
+
+## 📁 Project Structure
+
+This project follows a **feature-based architecture** pattern:
+
+```
+src/
+├── features/           # Feature modules (business logic)
+│   ├── game/          # Game logic
+│   ├── audio/         # Audio services
+│   ├── auth/          # Authentication
+│   └── multiplayer/  # Multiplayer
+├── components/         # UI components
+│   ├── common/        # Shared components
+│   └── game/          # Game-specific components
+├── pages/              # Page components (orchestration)
+├── contexts/           # React contexts
+├── hooks/              # Global hooks
+├── utils/              # Utilities
+└── types/              # TypeScript types
+```
+
+See [Architecture Documentation](./docs/02-architecture/README.md) for more details.
+
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+# Unit tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+
+# E2E tests
+npm run test:e2e
+```
+
+## 📚 Documentation
+
+- [Getting Started](./docs/01-getting-started/README.md)
+- [Architecture](./docs/02-architecture/README.md)
+- [Setup Guide](./SETUP.md)
 
 ## 📝 Credits
 

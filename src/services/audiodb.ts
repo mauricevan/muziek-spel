@@ -1,8 +1,10 @@
 // TheAudioDB API Service
+import type { AudioDBArtist, AudioDBAlbum, AudioDBTrack, Genre } from '../types/api.types';
+
 const AUDIODB_BASE_URL = 'https://www.theaudiodb.com/api/v1/json';
 const AUDIODB_API_KEY = '523532'; // Free API key (you can use '2' or get premium key)
 
-const genreArtists = {
+const genreArtists: Record<string, string[]> = {
     'pop': [
         'Taylor Swift', 'Ed Sheeran', 'Ariana Grande', 'The Weeknd', 'Dua Lipa',
         'Justin Bieber', 'Katy Perry', 'Rihanna', 'Lady Gaga', 'Bruno Mars',
@@ -58,13 +60,13 @@ const genreArtists = {
 /**
  * Search for artists by name
  */
-export const searchArtist = async (artistName) => {
+export const searchArtist = async (artistName: string): Promise<AudioDBArtist[]> => {
     try {
         const response = await fetch(
             `${AUDIODB_BASE_URL}/${AUDIODB_API_KEY}/search.php?s=${encodeURIComponent(artistName)}`
         );
         const data = await response.json();
-        return data.artists || [];
+        return (data.artists || []) as AudioDBArtist[];
     } catch (error) {
         console.error('Error searching artist:', error);
         return [];
@@ -74,13 +76,13 @@ export const searchArtist = async (artistName) => {
 /**
  * Get artist details by ID
  */
-export const getArtistById = async (artistId) => {
+export const getArtistById = async (artistId: string): Promise<AudioDBArtist | null> => {
     try {
         const response = await fetch(
             `${AUDIODB_BASE_URL}/${AUDIODB_API_KEY}/artist.php?i=${artistId}`
         );
         const data = await response.json();
-        return data.artists ? data.artists[0] : null;
+        return data.artists ? (data.artists[0] as AudioDBArtist) : null;
     } catch (error) {
         console.error('Error getting artist:', error);
         return null;
@@ -90,13 +92,13 @@ export const getArtistById = async (artistId) => {
 /**
  * Get albums by artist ID
  */
-export const getAlbumsByArtist = async (artistId) => {
+export const getAlbumsByArtist = async (artistId: string): Promise<AudioDBAlbum[]> => {
     try {
         const response = await fetch(
             `${AUDIODB_BASE_URL}/${AUDIODB_API_KEY}/album.php?i=${artistId}`
         );
         const data = await response.json();
-        return data.album || [];
+        return (data.album || []) as AudioDBAlbum[];
     } catch (error) {
         console.error('Error getting albums:', error);
         return [];
@@ -106,13 +108,13 @@ export const getAlbumsByArtist = async (artistId) => {
 /**
  * Get tracks by album ID
  */
-export const getTracksByAlbum = async (albumId) => {
+export const getTracksByAlbum = async (albumId: string): Promise<AudioDBTrack[]> => {
     try {
         const response = await fetch(
             `${AUDIODB_BASE_URL}/${AUDIODB_API_KEY}/track.php?m=${albumId}`
         );
         const data = await response.json();
-        return data.track || [];
+        return (data.track || []) as AudioDBTrack[];
     } catch (error) {
         console.error('Error getting tracks:', error);
         return [];
@@ -122,7 +124,7 @@ export const getTracksByAlbum = async (albumId) => {
 /**
  * Get raw list of artist names for a genre
  */
-export const getArtistNamesByGenre = (genre) => {
+export const getArtistNamesByGenre = (genre: string | null | undefined): string[] => {
     // Handle null, undefined, or empty string
     if (!genre || typeof genre !== 'string' || genre.trim() === '') {
         return genreArtists['pop'];
@@ -134,8 +136,8 @@ export const getArtistNamesByGenre = (genre) => {
 /**
  * Fetch details for a list of artist names
  */
-export const getArtistsDetails = async (names) => {
-    const results = [];
+export const getArtistsDetails = async (names: string[]): Promise<AudioDBArtist[]> => {
+    const results: AudioDBArtist[] = [];
     for (const artistName of names) {
         const artistData = await searchArtist(artistName);
         if (artistData.length > 0) {
@@ -148,7 +150,7 @@ export const getArtistsDetails = async (names) => {
 /**
  * Get random artists by genre (Legacy support)
  */
-export const getArtistsByGenre = async (genre, limit = 10) => {
+export const getArtistsByGenre = async (genre: Genre | string | null | undefined, limit: number = 10): Promise<AudioDBArtist[]> => {
     // Ensure genre is valid before processing
     if (!genre || typeof genre !== 'string' || genre.trim() === '') {
         genre = 'pop';
@@ -171,3 +173,4 @@ export default {
     getArtistNamesByGenre,
     getArtistsDetails
 };
+

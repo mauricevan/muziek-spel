@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
-import { getArtistsByGenre, getAlbumsByArtist, getTracksByAlbum, getArtistNamesByGenre, getArtistsDetails } from "../services/audiodb";
-import { getTrackPreviews } from "../services/deezer";
+import { getAlbumsByArtist, getTracksByAlbum, getArtistNamesByGenre, getArtistsDetails } from "../../audio/services/audiodbService";
+import { getTrackPreviews } from "../../audio/services/deezerService";
+import type { Artist, Track, UseGameLogicReturn, GameArtistsResult } from '../types/game.types';
 
-export const useGameLogic = () => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+export const useGameLogic = (): UseGameLogicReturn => {
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const getArtists = useCallback(async (genre, qtyArtists, usedArtistNames = []) => {
+    const getArtists = useCallback(async (genre: string | null | undefined, qtyArtists: number, usedArtistNames: string[] = []): Promise<GameArtistsResult | null> => {
         try {
             setLoading(true);
             setError(null);
@@ -56,7 +57,7 @@ export const useGameLogic = () => {
                  throw new Error('Kon artiest details niet ophalen.');
             }
 
-            const _artists = artistsData.map(artist => ({
+            const _artists: Artist[] = artistsData.map(artist => ({
                 name: artist.strArtist,
                 id: artist.idArtist,
                 thumb: artist.strArtistThumb,
@@ -78,13 +79,14 @@ export const useGameLogic = () => {
             return { _artists, _correctIdx };
         } catch (err) {
             console.error("Error getting artists:", err);
-            setError(err.message);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+            setError(errorMessage);
             setLoading(false);
             return null;
         }
     }, []);
 
-    const getSongs = useCallback(async (artists, correctIdx, qtySongs) => {
+    const getSongs = useCallback(async (artists: Artist[], correctIdx: number, qtySongs: number): Promise<Track[]> => {
         try {
             setLoading(true);
             const correctArtist = artists[correctIdx];
@@ -129,7 +131,8 @@ export const useGameLogic = () => {
             return [{
                 idTrack: artists[correctIdx].id,
                 strTrack: "Unknown Track",
-                strArtist: artists[correctIdx].name
+                strArtist: artists[correctIdx].name,
+                strAlbumThumb: null
             }];
         }
     }, []);
@@ -141,3 +144,4 @@ export const useGameLogic = () => {
         error
     };
 };
+

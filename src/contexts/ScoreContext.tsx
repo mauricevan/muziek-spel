@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import type { ScoreContextType, HighScore } from '../types/game.types';
 
-const ScoreContext = createContext();
+const ScoreContext = createContext<ScoreContextType | undefined>(undefined);
 
-export const useScore = () => {
+export const useScore = (): ScoreContextType => {
     const context = useContext(ScoreContext);
     if (!context) {
         throw new Error('useScore must be used within a ScoreProvider');
@@ -10,21 +11,25 @@ export const useScore = () => {
     return context;
 };
 
-export const ScoreProvider = ({ children }) => {
-    const [score, setScore] = useState(0);
-    const [streak, setStreak] = useState(0);
-    const [totalQuestions, setTotalQuestions] = useState(0);
-    const [correctAnswers, setCorrectAnswers] = useState(0);
-    const [responseTime, setResponseTime] = useState(null);
-    const [questionStartTime, setQuestionStartTime] = useState(null);
+interface ScoreProviderProps {
+    children: ReactNode;
+}
+
+export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
+    const [score, setScore] = useState<number>(0);
+    const [streak, setStreak] = useState<number>(0);
+    const [totalQuestions, setTotalQuestions] = useState<number>(0);
+    const [correctAnswers, setCorrectAnswers] = useState<number>(0);
+    const [responseTime, setResponseTime] = useState<number | null>(null);
+    const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
     
     // Arcade Mode State
-    const [lives, setLives] = useState(3);
-    const [round, setRound] = useState(1);
-    const [gameOver, setGameOver] = useState(false);
+    const [lives, setLives] = useState<number>(3);
+    const [round, setRound] = useState<number>(1);
+    const [gameOver, setGameOver] = useState<boolean>(false);
 
     // Calculate score based on speed and streak
-    const calculateScore = (isCorrect, timeInSeconds) => {
+    const calculateScore = useCallback((isCorrect: boolean, timeInSeconds: number): number => {
         if (!isCorrect) {
             setStreak(0);
             setLives(prev => {
@@ -51,6 +56,8 @@ export const ScoreProvider = ({ children }) => {
         }
 
         // Streak bonus (10 points per streak)
+        // We use the current streak from state + 1
+        // Note: This relies on 'streak' being up to date in the closure
         const newStreak = streak + 1;
         const streakBonus = Math.min(newStreak * 10, 100); // Max 100 bonus
         points += streakBonus;
@@ -61,17 +68,17 @@ export const ScoreProvider = ({ children }) => {
         setRound(prev => prev + 1);
 
         return points;
-    };
+    }, [streak]);
 
-    const startQuestion = () => {
+    const startQuestion = useCallback((): void => {
         setQuestionStartTime(Date.now());
         setTotalQuestions(prev => prev + 1);
-    };
+    }, []);
 
-    const answerQuestion = (isCorrect) => {
+    const answerQuestion = useCallback((isCorrect: boolean): { points: number; timeInSeconds: number } => {
         if (!questionStartTime) {
             console.error('Question was not started properly');
-            return 0;
+            return { points: 0, timeInSeconds: 0 };
         }
 
         const timeInSeconds = (Date.now() - questionStartTime) / 1000;
@@ -80,9 +87,9 @@ export const ScoreProvider = ({ children }) => {
         setQuestionStartTime(null);
 
         return { points, timeInSeconds };
-    };
+    }, [questionStartTime, calculateScore]);
 
-    const resetGame = () => {
+    const resetGame = useCallback((): void => {
         setScore(0);
         setStreak(0);
         setTotalQuestions(0);
@@ -92,15 +99,20 @@ export const ScoreProvider = ({ children }) => {
         setLives(3);
         setRound(1);
         setGameOver(false);
-    };
+    }, []);
+
+    // Memoize accuracy calculation
+    const accuracy = useMemo(() => {
+        return totalQuestions > 0 ? (correctAnswers / totalQuestions * 100).toFixed(1) : '0';
+    }, [totalQuestions, correctAnswers]);
 
     // Save high score to localStorage
-    const saveHighScore = (playerName = 'Anonymous') => {
-        const highScores = JSON.parse(localStorage.getItem('highScores') || '[]');
-        const newScore = {
+    const saveHighScore = useCallback((playerName: string = 'Anonymous'): void => {
+        const highScores: HighScore[] = JSON.parse(localStorage.getItem('highScores') || '[]');
+        const newScore: HighScore = {
             name: playerName,
             score: score,
-            accuracy: totalQuestions > 0 ? (correctAnswers / totalQuestions * 100).toFixed(1) : 0,
+            accuracy: accuracy,
             date: new Date().toISOString(),
             totalQuestions: totalQuestions,
             correctAnswers: correctAnswers,
@@ -112,13 +124,13 @@ export const ScoreProvider = ({ children }) => {
         highScores.splice(10); // Keep only top 10
 
         localStorage.setItem('highScores', JSON.stringify(highScores));
-    };
+    }, [score, totalQuestions, correctAnswers, round, accuracy]);
 
-    const getHighScores = () => {
+    const getHighScores = useCallback((): HighScore[] => {
         return JSON.parse(localStorage.getItem('highScores') || '[]');
-    };
+    }, []);
 
-    const value = {
+    const value: ScoreContextType = {
         score,
         streak,
         totalQuestions,
@@ -142,3 +154,4 @@ export const ScoreProvider = ({ children }) => {
 };
 
 export default ScoreContext;
+
